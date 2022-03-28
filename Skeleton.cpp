@@ -49,60 +49,141 @@ const char * const fragmentSource = R"(
 	#version 330
 	precision highp float;
 	
-	uniform vec3 color;
+	uniform vec4 color;
 	out vec4 outColor;
 
 	void main() {
-		outColor = vec4(color, 1);
+		outColor = color;
 	}
 )";
 
+int randBetween(int min, int max) {
+	return min + (std::rand() % (max - min + 1));
+}
+
+class Camera2D {
+	vec2 position = vec2(0, 0);
+	vec2 size = vec2(100, 100);
+
+  public:
+	mat4 V() { return TranslateMatrix(position); }
+	mat4 P() { return ScaleMatrix(vec3(2/size.x, 2/size.y, 0)); }
+};
+
 GPUProgram gpuProgram;
-unsigned int vao;
+Camera2D camera;
+
+class Circle {
+	static const int tesselationCount = 50;
+	static const int count = tesselationCount + 1;
+	inline static unsigned int vao;
+
+  public:
+	static void Create() {
+		glGenVertexArrays(1, &Circle::vao);
+		glBindVertexArray(vao);
+
+		unsigned int vbo;
+		glGenBuffers(1, &vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+		std::vector<vec2> points(count);
+		points[0] = vec2(0,0);
+		for (size_t i = 0; i < tesselationCount; i++) {
+			float angle = 2*M_PI * i/(tesselationCount - 1);
+			points[i+1] = vec2(cosf(angle), sinf(angle));
+		}
+		glBufferData(GL_ARRAY_BUFFER, points.size()*sizeof(vec2), &points[0], GL_STATIC_DRAW);
+
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), nullptr);
+	}
+
+	static void Draw(mat4 MVP, vec4 color) {
+		glBindVertexArray(vao);
+
+		gpuProgram.setUniform(MVP, "MVP");
+		gpuProgram.setUniform(color, "color");
+
+		glDrawArrays(GL_TRIANGLE_FAN, 0, count);
+	}
+};
+
+struct Atom {
+	vec2 position;
+	float m, q;
+	unsigned int vao;
+
+	Atom(unsigned int vao) : vao(vao){
+	}
+
+	mat4 M() { return TranslateMatrix(position); }
+
+	void Draw() {
+		mat4 mvp = M() * camera.V() * camera.P();
+		vec4 color = vec4(0,0,0, 1);
+		if (q < 0) {
+			color.z = 1;
+		} else {
+			color.x = 1;
+		}
+		
+		Circle::Draw(mvp, color);
+	}
+};
+
+class Molecule {
+	vec2 position;
+	std::vector<Atom> atoms;
+	unsigned int vao;
+	float atomRadius = 10;
+
+  public:
+	Molecule() {
+		vec2 min(-25, -25);
+		vec2 max(25, 25);
+		atoms.resize(randBetween(2, 8), Atom(vao));
+
+		for (size_t i = 0; i < atoms.size(); i++) {
+
+			bool good;
+			do {
+				atoms[i].position = vec2(randBetween(min.x, max.x), randBetween(min.y, max.y));
+
+				for (size_t j = 0; j < i; j++) {
+					vec2 distanceVec = atoms[i].position - atoms[j].position;
+					float distance = dot(distanceVec, distanceVec);
+					if (distance < atomRadius * atomRadius) {
+						good = false;
+						break;
+					}
+				}
+				good = true;
+			} while(!good);
+		}
+	}
+
+	void Draw() {
+		for(Atom atom : atoms) { atom.Draw(); }
+	}
+};
+
+Molecule* molecule1;
 
 void onInitialization() {
 	glViewport(0, 0, windowWidth, windowHeight);
 
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-
-	unsigned int vbo;
-	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-	float vertices[] = { -0.8f, -0.8f, -0.6f, 1.0f, 0.8f, -0.2f };
-	glBufferData(GL_ARRAY_BUFFER,
-		sizeof(vertices),
-		vertices,
-		GL_STATIC_DRAW);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0,
-		2, GL_FLOAT, GL_FALSE,
-		0, NULL);
-
+	Circle::Create();
+	molecule1 = new Molecule();
 
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
 }
 
 void onDisplay() {
-	glClearColor(0, 0, 0, 0);
+	glClearColor(0.5, 0.5, 0.5, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-
-	int location = glGetUniformLocation(gpuProgram.getId(), "color");
-	glUniform3f(location, 0.0f, 1.0f, 0.0f);
-
-	float MVPtransf[4][4] = { 1, 0, 0, 0,
-							  0, 1, 0, 0,
-							  0, 0, 1, 0,
-							  0, 0, 0, 1 };
-
-	location = glGetUniformLocation(gpuProgram.getId(), "MVP");
-	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);
-
-	glBindVertexArray(vao);
-	glDrawArrays(GL_TRIANGLES, 0, 3);
+	molecule1->Draw();
 
 	glutSwapBuffers();
 }
