@@ -111,11 +111,9 @@ class Circle {
 
 struct Atom {
 	vec2 position;
-	float m, q;
-	unsigned int vao;
+	float m, q, radius;
 
-	Atom(unsigned int vao) : vao(vao){
-	}
+	Atom(float radius) : radius(radius) { }
 
 	mat4 M() { return TranslateMatrix(position); }
 
@@ -132,28 +130,127 @@ struct Atom {
 	}
 };
 
-class Molecule {
-	vec2 position;
-	std::vector<Atom> atoms;
-	unsigned int vao;
-	float atomRadius = 10;
+class GraphCreator {	
+	float radius;
+	std::vector<int> groups;
+	int uniqueGroups;
+	std::vector<vec2> points;
+	std::vector<std::pair<int, int>> edges;
+
+	int direction(vec2 base, vec2 from, vec2 to) {
+		from = from - base;
+		to = to - base;
+		float area = from.y*to.x - from.x * to.y;
+		if (area < 0) { return -1; }
+		if (area > 0) { return 1; }
+		return 0;
+	}
+
+	bool crosses(vec2 a, vec2 b, vec2 c, vec2 d) {
+		return direction(a, b, c) * direction(a, b, d) < 0 &&
+				direction(c, d, a) * direction(c, d, b) < 0;
+	}
+
+	bool crossesAny(vec2 a, vec2 b) {
+		for (auto otherEdge : edges) {
+			if (crosses(a, b, otherEdge.first, otherEdge.second)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool pointNear(vec2 a, vec2 b, vec2 p) {
+		vec2 v1 = a-b;
+		v1 = vec2(v1.y, -v1.x);
+		vec2 v2 = b-a;
+		v2 = vec2(-v2.y, v2.x);
+		if (direction(vec2(0,0), v1, p-b) * direction(vec2(0,0), v2, p-a) > 0) {
+			return false;
+		}
+
+		vec2 v = b-a;
+		vec2 n = vec2(-v.y, v.x);
+		vec2 n0 = normalize(n);
+		float distance = dot(p-a, n0);
+		return distance <= radius;
+	}
+
+	bool pointNearAny(int aIndex, int bIndex) {
+		for(int i = 0; i < points.size(); i++) {
+			if (i == aIndex || i == bIndex) {
+				continue;
+			}
+			if (pointNear(points[aIndex], points[bIndex], points[i])) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	int find(int i) {
+		if (groups[i] == i) {
+			return i;
+		}
+		return groups[i] = find(groups[i]);
+	}
 
   public:
-	Molecule() {
+	GraphCreator(float radius) : radius(radius) {}
+
+	std::vector<std::pair<int, int>> getEdges() {
+		int n = points.size();
+		groups.resize(n);
+		uniqueGroups = n;
+		for (size_t i = 0; i < n; i++) {
+			groups[i] = i;
+		}
+
+		std::vector<std::pair<int, int>> alledges;
+		for (size_t i = 0; i < n; i++) {
+			for (size_t j = i + 1; j < n; j++){
+				alledges.push_back(std::make_pair(i,j));
+			}
+		}
+		
+		while (uniqueGroups != 1) {
+			int index = randBetween(0, alledges.size()-1);
+			std::pair<int, int> edge = alledges[index];
+			vec2 a = points[edge.first];
+			vec2 b = points[edge.second];
+
+			if(crossesAny(a, b) || pointNearAny(edge.first, edge.second)) {
+				continue;
+			}
+
+			if (find(edge.first) == find(edge.second)) {
+				continue;
+			}
+
+			groups[edge.first] = groups[edge.second];
+			uniqueGroups--;
+
+			alledges.erase(alledges.begin() + index);
+			edges.push_back(edge);
+		}
+
+		return edges;
+	}
+
+	std::vector<vec2> getPoints() {
+		points.resize(randBetween(2, 8));
 		vec2 min(-25, -25);
 		vec2 max(25, 25);
-		atoms.resize(randBetween(2, 8), Atom(vao));
 
-		for (size_t i = 0; i < atoms.size(); i++) {
-
+		for (size_t i = 0; i < points.size(); i++) {
 			bool good;
 			do {
-				atoms[i].position = vec2(randBetween(min.x, max.x), randBetween(min.y, max.y));
+				points[i] = vec2(randBetween(min.x, max.x), randBetween(min.y, max.y));
 
 				for (size_t j = 0; j < i; j++) {
-					vec2 distanceVec = atoms[i].position - atoms[j].position;
+					vec2 distanceVec = points[i] - points[j];
 					float distance = dot(distanceVec, distanceVec);
-					if (distance < atomRadius * atomRadius) {
+					if (distance < radius * radius) {
 						good = false;
 						break;
 					}
@@ -161,9 +258,59 @@ class Molecule {
 				good = true;
 			} while(!good);
 		}
+
+		return points;
+	}
+};
+
+class Molecule {
+	vec2 position;
+	std::vector<Atom> atoms;
+	std::vector<std::pair<int,int>> edges;
+	unsigned int vao;
+	float atomRadius = 10;
+
+  public:
+	Molecule() {
+		GraphCreator graphCreator(atomRadius);
+		auto points = graphCreator.getPoints();
+		atoms.resize(points.size(), Atom(atomRadius));
+		for (size_t i = 0; i < atoms.size(); i++) {
+			atoms[i].position = points[i];
+		}
+		edges = graphCreator.getEdges();
+
+		glGenVertexArrays(1, &vao);
+		glBindVertexArray(vao);
+
+		unsigned int vbo;
+		glGenBuffers(1, &vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+		std::vector<vec2> edgePoints(edges.size()*2);
+		for (size_t i = 0; i < edges.size(); i++) {
+			edgePoints[2*i] = edges[i].first; 
+			edgePoints[2*i+1] = edges[i].second; 
+		}
+		
+		// SIZEOF(FLOAT)
+		glBufferData(GL_ARRAY_BUFFER, edgePoints.size()*2*sizeof(float), &edgePoints[0], GL_STATIC_DRAW);
+
+		glEnableVertexAttribArray(0);
+		// SIZEOF(FLOAT)
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4*sizeof(float), nullptr);
 	}
 
+	mat4 M() { return TranslateMatrix(vec2(0,0)); }
+
 	void Draw() {
+		glLineWidth(2.0f);
+		glBindVertexArray(vao);
+
+		mat4 mvp = M() * camera.V() * camera.P();
+		gpuProgram.setUniform(mvp, "MVP");
+		glDrawArrays(GL_LINES, 0, 2*edges.size());
+
 		for(Atom atom : atoms) { atom.Draw(); }
 	}
 };
