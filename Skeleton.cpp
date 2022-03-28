@@ -153,7 +153,7 @@ class GraphCreator {
 
 	bool crossesAny(vec2 a, vec2 b) {
 		for (auto otherEdge : edges) {
-			if (crosses(a, b, otherEdge.first, otherEdge.second)) {
+			if (crosses(a, b, points[otherEdge.first], points[otherEdge.second])) {
 				return true;
 			}
 		}
@@ -173,7 +173,7 @@ class GraphCreator {
 		vec2 n = vec2(-v.y, v.x);
 		vec2 n0 = normalize(n);
 		float distance = dot(p-a, n0);
-		return distance <= radius;
+		return fabs(distance) <= radius;
 	}
 
 	bool pointNearAny(int aIndex, int bIndex) {
@@ -208,7 +208,7 @@ class GraphCreator {
 
 		std::vector<std::pair<int, int>> alledges;
 		for (size_t i = 0; i < n; i++) {
-			for (size_t j = i + 1; j < n; j++){
+			for (size_t j = i + 1; j < n; j++) {
 				alledges.push_back(std::make_pair(i,j));
 			}
 		}
@@ -223,11 +223,13 @@ class GraphCreator {
 				continue;
 			}
 
-			if (find(edge.first) == find(edge.second)) {
+			int rootA = find(edge.first);
+			int rootB = find(edge.second);
+			if (rootA == rootB) {
 				continue;
 			}
 
-			groups[edge.first] = groups[edge.second];
+			groups[rootA] = groups[rootB];
 			uniqueGroups--;
 
 			alledges.erase(alledges.begin() + index);
@@ -268,6 +270,7 @@ class Molecule {
 	std::vector<Atom> atoms;
 	std::vector<std::pair<int,int>> edges;
 	unsigned int vao;
+		unsigned int vbo;
 	float atomRadius = 5;
 
   public:
@@ -283,7 +286,6 @@ class Molecule {
 		glGenVertexArrays(1, &vao);
 		glBindVertexArray(vao);
 
-		unsigned int vbo;
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
@@ -299,6 +301,11 @@ class Molecule {
 		glEnableVertexAttribArray(0);
 		// SIZEOF(FLOAT)
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+	}
+
+	~Molecule() {
+		glDeleteBuffers(1, &vbo);
+		glDeleteVertexArrays(1, &vao);
 	}
 
 	mat4 M() { return TranslateMatrix(vec2(0,0)); }
@@ -332,6 +339,11 @@ void onInitialization() {
 	printf("%d\n", randBetween(1,100));
 	printf("%d\n", randBetween(1,100));
 	printf("%d\n", randBetween(1,100));
+
+	printf("%d\n", randBetween(1,100));
+	printf("%d\n", randBetween(1,100));
+	printf("%d\n", randBetween(1,100));
+	printf("%d\n", randBetween(1,100));
 	molecule1 = new Molecule();
 
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
@@ -347,6 +359,10 @@ void onDisplay() {
 }
 
 void onKeyboard(unsigned char key, int pX, int pY) {
+	if (key == 'd') {
+		delete molecule1;
+		molecule1 = new Molecule();
+	}
 	if (key == 'd') glutPostRedisplay();
 }
 
