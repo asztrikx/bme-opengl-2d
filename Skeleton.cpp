@@ -115,7 +115,7 @@ struct Atom {
 
 	Atom(float radius) : radius(radius) { }
 
-	mat4 M() { return TranslateMatrix(position); }
+	mat4 M() { return ScaleMatrix(vec2(radius, radius)) * TranslateMatrix(position); }
 
 	void Draw() {
 		mat4 mvp = M() * camera.V() * camera.P();
@@ -245,17 +245,17 @@ class GraphCreator {
 		for (size_t i = 0; i < points.size(); i++) {
 			bool good;
 			do {
+				good = true;
 				points[i] = vec2(randBetween(min.x, max.x), randBetween(min.y, max.y));
 
 				for (size_t j = 0; j < i; j++) {
 					vec2 distanceVec = points[i] - points[j];
 					float distance = dot(distanceVec, distanceVec);
-					if (distance < radius * radius) {
+					if (distance < 2 * radius * 2 * radius) {
 						good = false;
 						break;
 					}
 				}
-				good = true;
 			} while(!good);
 		}
 
@@ -268,7 +268,7 @@ class Molecule {
 	std::vector<Atom> atoms;
 	std::vector<std::pair<int,int>> edges;
 	unsigned int vao;
-	float atomRadius = 10;
+	float atomRadius = 5;
 
   public:
 	Molecule() {
@@ -289,26 +289,27 @@ class Molecule {
 
 		std::vector<vec2> edgePoints(edges.size()*2);
 		for (size_t i = 0; i < edges.size(); i++) {
-			edgePoints[2*i] = edges[i].first; 
-			edgePoints[2*i+1] = edges[i].second; 
+			edgePoints[2*i] = points[edges[i].first];
+			edgePoints[2*i+1] = points[edges[i].second]; 
 		}
 		
 		// SIZEOF(FLOAT)
-		glBufferData(GL_ARRAY_BUFFER, edgePoints.size()*2*sizeof(float), &edgePoints[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, edgePoints.size()*sizeof(vec2), &edgePoints[0], GL_STATIC_DRAW);
 
 		glEnableVertexAttribArray(0);
 		// SIZEOF(FLOAT)
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4*sizeof(float), nullptr);
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 	}
 
 	mat4 M() { return TranslateMatrix(vec2(0,0)); }
 
 	void Draw() {
-		glLineWidth(2.0f);
 		glBindVertexArray(vao);
+		glLineWidth(2.0f);
 
 		mat4 mvp = M() * camera.V() * camera.P();
 		gpuProgram.setUniform(mvp, "MVP");
+		gpuProgram.setUniform(vec4(0,0,0,1), "color");
 		glDrawArrays(GL_LINES, 0, 2*edges.size());
 
 		for(Atom atom : atoms) { atom.Draw(); }
@@ -321,6 +322,16 @@ void onInitialization() {
 	glViewport(0, 0, windowWidth, windowHeight);
 
 	Circle::Create();
+
+	printf("%d\n", randBetween(1,100));
+	printf("%d\n", randBetween(1,100));
+	printf("%d\n", randBetween(1,100));
+	printf("%d\n", randBetween(1,100));
+
+	printf("%d\n", randBetween(1,100));
+	printf("%d\n", randBetween(1,100));
+	printf("%d\n", randBetween(1,100));
+	printf("%d\n", randBetween(1,100));
 	molecule1 = new Molecule();
 
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
