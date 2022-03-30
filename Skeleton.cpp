@@ -57,13 +57,21 @@ const char * const fragmentSource = R"(
 	}
 )";
 
+float massUnit = 1.6735575e-27;
+float chargeUnit = 1.60218e-19;
+float distanceUnit = 1e-19; // TODO
+int massAbsRange = 10;
+int chargeAbsRange = 10;
+float atomRadius = 3 * distanceUnit;
+float atomRadiusEps = atomRadius * 1.5f;
+
 int randBetween(int min, int max) {
 	return min + (std::rand() % (max - min + 1));
 }
 
 class Camera2D {
 	vec2 position = vec2(0, 0);
-	vec2 size = vec2(100, 100);
+	vec2 size = vec2(100, 100) * distanceUnit;
 
   public:
 	mat4 V() { return TranslateMatrix(position); }
@@ -140,21 +148,21 @@ class GraphCreator {
 		return 0;
 	}
 
-	bool crosses(vec2 a, vec2 b, vec2 c, vec2 d) {
+	bool edgeCrossesEdge(vec2 a, vec2 b, vec2 c, vec2 d) {
 		return direction(a, b, c) * direction(a, b, d) < 0 &&
 				direction(c, d, a) * direction(c, d, b) < 0;
 	}
 
-	bool crossesAny(vec2 a, vec2 b) {
+	bool edgeCrossesEdgeAny(vec2 a, vec2 b) {
 		for (auto otherEdge : edges) {
-			if (crosses(a, b, points[otherEdge.first], points[otherEdge.second])) {
+			if (edgeCrossesEdge(a, b, points[otherEdge.first], points[otherEdge.second])) {
 				return true;
 			}
 		}
 		return false;
 	}
 
-	bool pointNear(vec2 a, vec2 b, vec2 p) {
+	bool edgeCrossesCircle(vec2 a, vec2 b, vec2 p) {
 		vec2 v1 = a-b;
 		v1 = vec2(v1.y, -v1.x);
 		vec2 v2 = b-a;
@@ -170,12 +178,12 @@ class GraphCreator {
 		return fabs(distance) <= radius + radiusEps;
 	}
 
-	bool pointNearAny(int aIndex, int bIndex) {
+	bool edgeCrossesCircleAny(int aIndex, int bIndex) {
 		for(int i = 0; i < points.size(); i++) {
 			if (i == aIndex || i == bIndex) {
 				continue;
 			}
-			if (pointNear(points[aIndex], points[bIndex], points[i])) {
+			if (edgeCrossesCircle(points[aIndex], points[bIndex], points[i])) {
 				return true;
 			}
 		}
@@ -196,13 +204,13 @@ class GraphCreator {
 		int n = points.size();
 		groups.resize(n);
 		uniqueGroups = n;
-		for (size_t i = 0; i < n; i++) {
+		for (int i = 0; i < n; i++) {
 			groups[i] = i;
 		}
 
 		std::vector<std::pair<int, int>> allEdges;
-		for (size_t i = 0; i < n; i++) {
-			for (size_t j = i + 1; j < n; j++) {
+		for (int i = 0; i < n; i++) {
+			for (int j = i + 1; j < n; j++) {
 				allEdges.push_back(std::make_pair(i,j));
 			}
 		}
@@ -213,7 +221,7 @@ class GraphCreator {
 			vec2 a = points[edge.first];
 			vec2 b = points[edge.second];
 
-			if(crossesAny(a, b) || pointNearAny(edge.first, edge.second)) {
+			if(edgeCrossesEdgeAny(a, b) || edgeCrossesCircleAny(edge.first, edge.second)) {
 				continue;
 			}
 
@@ -245,7 +253,7 @@ class GraphCreator {
 			bool good;
 			do {
 				good = true;
-				points[i] = vec2(randBetween(min.x, max.x), randBetween(min.y, max.y));
+				points[i] = vec2(randBetween(min.x, max.x), randBetween(min.y, max.y)) * distanceUnit;
 
 				for (size_t j = 0; j < i; j++) {
 					vec2 distanceVec = points[i] - points[j];
@@ -268,8 +276,6 @@ class Molecule {
 	std::vector<std::pair<int,int>> edges;
 	unsigned int vao;
 	unsigned int vbo;
-	float atomRadius = 3;
-	float atomRadiusEps = atomRadius * 1.5f;
 
   public:
 	Molecule() {
@@ -281,38 +287,37 @@ class Molecule {
 		}
 		edges = graphCreator.getEdges();
 
+		// tesselation
 		std::vector<vec2> edgePoints(edges.size()*2);
 		for (size_t i = 0; i < edges.size(); i++) {
-			edgePoints[2*i] = points[edges[i].first];
-			edgePoints[2*i+1] = points[edges[i].second]; 
+			edgePoints[2*i] = atoms[edges[i].first].position;
+			edgePoints[2*i+1] = atoms[edges[i].second].position; 
 		}
 
-		float massUnit = 1.6735575e-27;
-		int massAbsRange = 10;
-		float chargeUnit = 1.60218e-19;
-		int chargeAbsRange = 10;
-		float distanceUnit = 1e-19; // TODO
-
+		// rand m, q
 		float sumCharge = 0;
 		for (Atom& atom: atoms) {
-			atom.m = randBetween(-massAbsRange, massAbsRange) * massUnit; // TODO between for neg
+			atom.m = randBetween(-massAbsRange, massAbsRange) * massUnit;
 			atom.q = randBetween(-chargeAbsRange, chargeAbsRange);
 			sumCharge += atom.q;
 		}
 
+		// sum q = 0 fixup
 		float fixupCharge = sumCharge / atoms.size();
 		float chargeAbsMax = 1.0f;
 		for (Atom& atom: atoms) {
-			atom.q -= fixupCharge; // TODO fix overflow of massChargeRange
+			atom.q -= fixupCharge;
 			chargeAbsMax = std::max(fabs(atom.q), chargeAbsMax);
 		}
 
+		// q scale into range <= fixup can break this
 		if (chargeAbsMax > chargeAbsRange) {
 			for (Atom& atom: atoms) {
 				atom.q *= chargeAbsRange / chargeAbsMax;
 			}
 		}
 
+		// color, chargeUnit
 		for (Atom& atom: atoms) {
 			float intensity = 1.0f * fabs(atom.q / chargeAbsRange);
 			vec3 endColor;
@@ -324,13 +329,6 @@ class Molecule {
 			atom.color = vec3(0,0,0) * (1-intensity) + endColor * intensity;
 			atom.q = atom.q * chargeUnit;
 		}
-		
-		// TODO debug with Circle::
-		vec2 balancePoint(0, 0);
-		for (size_t i = 0; i < points.size(); i++) {
-			/* code */
-		}
-		
 		
 		openGlInit(edgePoints);
 	}
@@ -367,6 +365,9 @@ class Molecule {
 		glDrawArrays(GL_LINES, 0, 2*edges.size());
 
 		for(Atom atom : atoms) { atom.Draw(); }
+
+		//mvp = TranslateMatrix(balancePoint) * camera.V() * camera.P();
+		//Circle::Draw(mvp, vec3(0,1,0));
 	}
 };
 
