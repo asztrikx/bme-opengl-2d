@@ -301,8 +301,19 @@ class Molecule {
 		}
 
 		float fixupCharge = sumCharge / atoms.size();
+		float chargeAbsMax = 1.0f;
 		for (Atom& atom: atoms) {
 			atom.q -= fixupCharge; // TODO fix overflow of massChargeRange
+			chargeAbsMax = std::max(fabs(atom.q), chargeAbsMax);
+		}
+
+		if (chargeAbsMax > chargeAbsRange) {
+			for (Atom& atom: atoms) {
+				atom.q *= chargeAbsRange / chargeAbsMax;
+			}
+		}
+
+		for (Atom& atom: atoms) {
 			float intensity = 1.0f * fabs(atom.q / chargeAbsRange);
 			vec3 endColor;
 			if (atom.q < 0) {
@@ -313,6 +324,13 @@ class Molecule {
 			atom.color = vec3(0,0,0) * (1-intensity) + endColor * intensity;
 			atom.q = atom.q * chargeUnit;
 		}
+		
+		// TODO debug with Circle::
+		vec2 balancePoint(0, 0);
+		for (size_t i = 0; i < points.size(); i++) {
+			/* code */
+		}
+		
 		
 		openGlInit(edgePoints);
 	}
