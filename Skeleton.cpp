@@ -131,7 +131,7 @@ struct Atom {
 };
 
 class GraphCreator {	
-	float radius;
+	float radius, radiusEps;
 	std::vector<int> groups;
 	int uniqueGroups;
 	std::vector<vec2> points;
@@ -173,7 +173,7 @@ class GraphCreator {
 		vec2 n = vec2(-v.y, v.x);
 		vec2 n0 = normalize(n);
 		float distance = dot(p-a, n0);
-		return fabs(distance) <= radius;
+		return fabs(distance) <= radius + radiusEps;
 	}
 
 	bool pointNearAny(int aIndex, int bIndex) {
@@ -196,7 +196,7 @@ class GraphCreator {
 	}
 
   public:
-	GraphCreator(float radius) : radius(radius) {}
+	GraphCreator(float radius, float radiusEps) : radius(radius), radiusEps(radiusEps) {}
 
 	std::vector<std::pair<int, int>> getEdges() {
 		int n = points.size();
@@ -206,16 +206,16 @@ class GraphCreator {
 			groups[i] = i;
 		}
 
-		std::vector<std::pair<int, int>> alledges;
+		std::vector<std::pair<int, int>> allEdges;
 		for (size_t i = 0; i < n; i++) {
 			for (size_t j = i + 1; j < n; j++) {
-				alledges.push_back(std::make_pair(i,j));
+				allEdges.push_back(std::make_pair(i,j));
 			}
 		}
 		
 		while (uniqueGroups != 1) {
-			int index = randBetween(0, alledges.size()-1);
-			std::pair<int, int> edge = alledges[index];
+			int index = randBetween(0, allEdges.size()-1);
+			std::pair<int, int> edge = allEdges[index];
 			vec2 a = points[edge.first];
 			vec2 b = points[edge.second];
 
@@ -232,7 +232,7 @@ class GraphCreator {
 			groups[rootA] = groups[rootB];
 			uniqueGroups--;
 
-			alledges.erase(alledges.begin() + index);
+			allEdges.erase(allEdges.begin() + index);
 			edges.push_back(edge);
 		}
 
@@ -241,8 +241,11 @@ class GraphCreator {
 
 	std::vector<vec2> getPoints() {
 		points.resize(randBetween(2, 8));
-		vec2 min(-25, -25);
-		vec2 max(25, 25);
+		float rectSize = 50.0f;
+		vec2 min(-rectSize/2, -rectSize/2);
+		vec2 max(rectSize/2, rectSize/2);
+		float diameter = 2 * radius;
+		float minDistance = diameter + radiusEps;
 
 		for (size_t i = 0; i < points.size(); i++) {
 			bool good;
@@ -253,7 +256,7 @@ class GraphCreator {
 				for (size_t j = 0; j < i; j++) {
 					vec2 distanceVec = points[i] - points[j];
 					float distance = dot(distanceVec, distanceVec);
-					if (distance < 2 * radius * 2 * radius) {
+					if (distance < minDistance * minDistance) {
 						good = false;
 						break;
 					}
@@ -271,11 +274,12 @@ class Molecule {
 	std::vector<std::pair<int,int>> edges;
 	unsigned int vao;
 		unsigned int vbo;
-	float atomRadius = 5;
+	float atomRadius = 3;
+	float atomRadiusEps = atomRadius * 1.5f;
 
   public:
 	Molecule() {
-		GraphCreator graphCreator(atomRadius);
+		GraphCreator graphCreator(atomRadius, atomRadiusEps);
 		auto points = graphCreator.getPoints();
 		atoms.resize(points.size(), Atom(atomRadius));
 		for (size_t i = 0; i < atoms.size(); i++) {
@@ -329,21 +333,6 @@ void onInitialization() {
 	glViewport(0, 0, windowWidth, windowHeight);
 
 	Circle::Create();
-
-	printf("%d\n", randBetween(1,100));
-	printf("%d\n", randBetween(1,100));
-	printf("%d\n", randBetween(1,100));
-	printf("%d\n", randBetween(1,100));
-
-	printf("%d\n", randBetween(1,100));
-	printf("%d\n", randBetween(1,100));
-	printf("%d\n", randBetween(1,100));
-	printf("%d\n", randBetween(1,100));
-
-	printf("%d\n", randBetween(1,100));
-	printf("%d\n", randBetween(1,100));
-	printf("%d\n", randBetween(1,100));
-	printf("%d\n", randBetween(1,100));
 	molecule1 = new Molecule();
 
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
