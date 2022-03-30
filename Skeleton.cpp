@@ -49,11 +49,11 @@ const char * const fragmentSource = R"(
 	#version 330
 	precision highp float;
 	
-	uniform vec4 color;
+	uniform vec3 color;
 	out vec4 outColor;
 
 	void main() {
-		outColor = color;
+		outColor = vec4(color.xyz, 1);
 	}
 )";
 
@@ -99,7 +99,7 @@ class Circle {
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), nullptr);
 	}
 
-	static void Draw(mat4 MVP, vec4 color) {
+	static void Draw(mat4 MVP, vec3 color) {
 		glBindVertexArray(vao);
 
 		gpuProgram.setUniform(MVP, "MVP");
@@ -112,6 +112,7 @@ class Circle {
 struct Atom {
 	vec2 position;
 	float m, q, radius;
+	vec3 color;
 
 	Atom(float radius) : radius(radius) { }
 
@@ -119,18 +120,11 @@ struct Atom {
 
 	void Draw() {
 		mat4 mvp = M() * camera.V() * camera.P();
-		vec4 color = vec4(0,0,0, 1);
-		if (q < 0) {
-			color.z = 1;
-		} else {
-			color.x = 1;
-		}
-		
 		Circle::Draw(mvp, color);
 	}
 };
 
-class GraphCreator {	
+class GraphCreator {
 	float radius, radiusEps;
 	std::vector<int> groups;
 	int uniqueGroups;
@@ -273,7 +267,7 @@ class Molecule {
 	std::vector<Atom> atoms;
 	std::vector<std::pair<int,int>> edges;
 	unsigned int vao;
-		unsigned int vbo;
+	unsigned int vbo;
 	float atomRadius = 3;
 	float atomRadiusEps = atomRadius * 1.5f;
 
@@ -287,17 +281,48 @@ class Molecule {
 		}
 		edges = graphCreator.getEdges();
 
-		glGenVertexArrays(1, &vao);
-		glBindVertexArray(vao);
-
-		glGenBuffers(1, &vbo);
-		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
 		std::vector<vec2> edgePoints(edges.size()*2);
 		for (size_t i = 0; i < edges.size(); i++) {
 			edgePoints[2*i] = points[edges[i].first];
 			edgePoints[2*i+1] = points[edges[i].second]; 
 		}
+
+		float massUnit = 1.6735575e-27;
+		int massAbsRange = 10;
+		float chargeUnit = 1.60218e-19;
+		int chargeAbsRange = 10;
+		float distanceUnit = 1e-19; // TODO
+
+		float sumCharge = 0;
+		for (Atom& atom: atoms) {
+			atom.m = randBetween(-massAbsRange, massAbsRange) * massUnit; // TODO between for neg
+			atom.q = randBetween(-chargeAbsRange, chargeAbsRange);
+			sumCharge += atom.q;
+		}
+
+		float fixupCharge = sumCharge / atoms.size();
+		for (Atom& atom: atoms) {
+			atom.q -= fixupCharge; // TODO fix overflow of massChargeRange
+			float intensity = 1.0f * fabs(atom.q / chargeAbsRange);
+			vec3 endColor;
+			if (atom.q < 0) {
+				endColor = vec3(0,0,1);
+			} else {
+				endColor = vec3(1,0,0);
+			}
+			atom.color = vec3(0,0,0) * (1-intensity) + endColor * intensity;
+			atom.q = atom.q * chargeUnit;
+		}
+		
+		openGlInit(edgePoints);
+	}
+
+	void openGlInit(std::vector<vec2> &edgePoints) {
+		glGenVertexArrays(1, &vao);
+		glBindVertexArray(vao);
+
+		glGenBuffers(1, &vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		
 		// SIZEOF(FLOAT)
 		glBufferData(GL_ARRAY_BUFFER, edgePoints.size()*sizeof(vec2), &edgePoints[0], GL_STATIC_DRAW);
@@ -320,7 +345,7 @@ class Molecule {
 
 		mat4 mvp = M() * camera.V() * camera.P();
 		gpuProgram.setUniform(mvp, "MVP");
-		gpuProgram.setUniform(vec4(0,0,0,1), "color");
+		gpuProgram.setUniform(vec3(1,1,1), "color");
 		glDrawArrays(GL_LINES, 0, 2*edges.size());
 
 		for(Atom atom : atoms) { atom.Draw(); }
@@ -340,7 +365,8 @@ void onInitialization() {
 
 void onDisplay() {
 	glClearColor(0.5, 0.5, 0.5, 1);
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// TODO fix alpha channel
 
 	molecule1->Draw();
 
