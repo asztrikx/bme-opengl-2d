@@ -60,9 +60,9 @@ const char * const fragmentSource = R"(
 float massUnit = 1.6735575e-27;
 float chargeUnit = 1.60218e-19;
 float distanceUnit = 1e-19; // TODO
-int massAbsRange = 10;
+int massRange = 10;
 int chargeAbsRange = 10;
-float atomRadius = 3 * distanceUnit;
+float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
 
 int randBetween(int min, int max) {
@@ -71,11 +71,15 @@ int randBetween(int min, int max) {
 
 class Camera2D {
 	vec2 position = vec2(0, 0);
-	vec2 size = vec2(100, 100) * distanceUnit;
+	vec2 size = vec2(100, 100);
 
   public:
-	mat4 V() { return TranslateMatrix(position); }
+	mat4 V() { return TranslateMatrix(-position); }
 	mat4 P() { return ScaleMatrix(vec3(2/size.x, 2/size.y, 0)); }
+
+	void Pan(vec2 translate) { position = position + translate; }
+	// TODO delete
+	void Zoom(float scalar) {size = size * scalar; }
 };
 
 GPUProgram gpuProgram;
@@ -122,6 +126,7 @@ struct Atom {
 	float m, q, radius;
 	vec3 color;
 
+	// TODO take radius out
 	Atom(float radius) : radius(radius) { }
 
 	mat4 M() { return ScaleMatrix(vec2(radius, radius)) * TranslateMatrix(position); }
@@ -253,7 +258,7 @@ class GraphCreator {
 			bool good;
 			do {
 				good = true;
-				points[i] = vec2(randBetween(min.x, max.x), randBetween(min.y, max.y)) * distanceUnit;
+				points[i] = vec2(randBetween(min.x, max.x), randBetween(min.y, max.y));
 
 				for (size_t j = 0; j < i; j++) {
 					vec2 distanceVec = points[i] - points[j];
@@ -274,6 +279,7 @@ class Molecule {
 	vec2 position;
 	std::vector<Atom> atoms;
 	std::vector<std::pair<int,int>> edges;
+    vec2 centroid;
 	unsigned int vao;
 	unsigned int vbo;
 
@@ -297,7 +303,7 @@ class Molecule {
 		// rand m, q
 		float sumCharge = 0;
 		for (Atom& atom: atoms) {
-			atom.m = randBetween(-massAbsRange, massAbsRange) * massUnit;
+			atom.m = randBetween(1, massRange);
 			atom.q = randBetween(-chargeAbsRange, chargeAbsRange);
 			sumCharge += atom.q;
 		}
@@ -329,6 +335,24 @@ class Molecule {
 			atom.color = vec3(0,0,0) * (1-intensity) + endColor * intensity;
 			atom.q = atom.q * chargeUnit;
 		}
+        
+        // balancepoint
+		centroid = vec2(0, 0);
+		float sumMass = 0;
+		for (Atom &atom : atoms) {
+			centroid = centroid + atom.m * atom.position;
+			sumMass += atom.m;
+		}
+		centroid = centroid / sumMass;
+
+		// balancepoint -> origo
+		for (vec2 &edgePoint: edgePoints) {
+			edgePoint = edgePoint - centroid;
+		}
+		for (Atom &atom: atoms){
+			atom.position = atom.position - centroid;
+		}
+		centroid = vec2(0,0);
 		
 		openGlInit(edgePoints);
 	}
@@ -366,8 +390,8 @@ class Molecule {
 
 		for(Atom atom : atoms) { atom.Draw(); }
 
-		//mvp = TranslateMatrix(balancePoint) * camera.V() * camera.P();
-		//Circle::Draw(mvp, vec3(0,1,0));
+		mvp = ScaleMatrix(vec2(atomRadius, atomRadius)) * TranslateMatrix(centroid) * camera.V() * camera.P();
+		Circle::Draw(mvp, vec3(0,1,0));
 	}
 };
 
@@ -393,11 +417,21 @@ void onDisplay() {
 }
 
 void onKeyboard(unsigned char key, int pX, int pY) {
-	if (key == 'd') {
-		delete molecule1;
-		molecule1 = new Molecule();
+	float panUnit = 0.1*distanceUnit * 50; // TODO fix this, 0.1 only, slow
+
+	switch (key){
+		case ' ':
+			delete molecule1;
+			molecule1 = new Molecule();
+			break;
+		case 'a': camera.Pan(vec2(-panUnit,0)); break;
+		case 'd': camera.Pan(vec2(panUnit,0)); break;
+		case 's': camera.Pan(vec2(0,-panUnit)); break;
+		case 'w': camera.Pan(vec2(0,panUnit)); break;
+		case 'z': camera.Zoom(0.9f); break;
+		case 'Z': camera.Zoom(1.1f); break;
 	}
-	if (key == 'd') glutPostRedisplay();
+	glutPostRedisplay();
 }
 
 void onKeyboardUp(unsigned char key, int pX, int pY) {
