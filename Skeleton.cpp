@@ -131,8 +131,8 @@ struct Atom {
 
 	mat4 M() { return ScaleMatrix(vec2(radius, radius)) * TranslateMatrix(position); }
 
-	void Draw() {
-		mat4 mvp = M() * camera.V() * camera.P();
+	void Draw(mat4 T) {
+		mat4 mvp = M() * T * camera.V() * camera.P();
 		Circle::Draw(mvp, color);
 	}
 };
@@ -143,6 +143,7 @@ class GraphCreator {
 	int uniqueGroups;
 	std::vector<vec2> points;
 	std::vector<std::pair<int, int>> edges;
+	float rectSize = 50.0f;
 
 	int direction(vec2 base, vec2 from, vec2 to) {
 		from = from - base;
@@ -248,7 +249,6 @@ class GraphCreator {
 
 	std::vector<vec2> getPoints() {
 		points.resize(randBetween(2, 8));
-		float rectSize = 50.0f;
 		vec2 min(-rectSize/2, -rectSize/2);
 		vec2 max(rectSize/2, rectSize/2);
 		float diameter = 2 * radius;
@@ -280,6 +280,7 @@ class Molecule {
 	std::vector<Atom> atoms;
 	std::vector<std::pair<int,int>> edges;
     vec2 centroid;
+	int rectSize = 100.0f;
 	unsigned int vao;
 	unsigned int vbo;
 
@@ -353,6 +354,11 @@ class Molecule {
 			atom.position = atom.position - centroid;
 		}
 		centroid = vec2(0,0);
+
+		// random position
+		int x = randBetween(-rectSize/2, rectSize/2);
+		int y = randBetween(-rectSize/2, rectSize/2);
+		position = vec2(x,y);
 		
 		openGlInit(edgePoints);
 	}
@@ -377,7 +383,7 @@ class Molecule {
 		glDeleteVertexArrays(1, &vao);
 	}
 
-	mat4 M() { return TranslateMatrix(vec2(0,0)); }
+	mat4 M() { return TranslateMatrix(position); }
 
 	void Draw() {
 		glBindVertexArray(vao);
@@ -388,20 +394,30 @@ class Molecule {
 		gpuProgram.setUniform(vec3(1,1,1), "color");
 		glDrawArrays(GL_LINES, 0, 2*edges.size());
 
-		for(Atom atom : atoms) { atom.Draw(); }
-
-		mvp = ScaleMatrix(vec2(atomRadius, atomRadius)) * TranslateMatrix(centroid) * camera.V() * camera.P();
-		Circle::Draw(mvp, vec3(0,1,0));
+		for(Atom atom : atoms) { atom.Draw(TranslateMatrix(position)); }
 	}
 };
 
-Molecule* molecule1;
+std::vector<Molecule*> molecules;
+
+void restart() {
+	for (int i = 0; i < molecules.size(); i++) {
+		if (molecules[i] != nullptr) {
+			delete molecules[i];
+		}
+		molecules[i] = new Molecule();
+	}
+}
 
 void onInitialization() {
 	glViewport(0, 0, windowWidth, windowHeight);
 
 	Circle::Create();
-	molecule1 = new Molecule();
+	for (int i = 1; i <= 2; i++) {
+		molecules.push_back(nullptr);
+	}
+	
+	restart();
 
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
 }
@@ -409,9 +425,10 @@ void onInitialization() {
 void onDisplay() {
 	glClearColor(0.5, 0.5, 0.5, 1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	// TODO fix alpha channel
 
-	molecule1->Draw();
+	for(Molecule *molecule: molecules){
+		molecule->Draw();
+	}
 
 	glutSwapBuffers();
 }
@@ -420,10 +437,7 @@ void onKeyboard(unsigned char key, int pX, int pY) {
 	float panUnit = 0.1*distanceUnit * 50; // TODO fix this, 0.1 only, slow
 
 	switch (key){
-		case ' ':
-			delete molecule1;
-			molecule1 = new Molecule();
-			break;
+		case ' ': restart(); break;
 		case 'a': camera.Pan(vec2(-panUnit,0)); break;
 		case 'd': camera.Pan(vec2(panUnit,0)); break;
 		case 's': camera.Pan(vec2(0,-panUnit)); break;
