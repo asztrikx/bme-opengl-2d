@@ -83,7 +83,7 @@ class Camera2D {
 	mat4 V() { return TranslateMatrix(-position); }
 	mat4 P() { return ScaleMatrix(vec3(2/size.x, 2/size.y, 0)); }
 
-	void Pan(vec2 translate) { position = position + translate; }
+	void Pan(vec2 translate) { position = position + translate*size; }
 	// TODO delete
 	void Zoom(float scalar) {size = size * scalar; }
 };
@@ -297,6 +297,7 @@ struct MoleculeChange {
 	}
 };
 
+// TODO do not place m1's atom over m2's
 class Molecule {
 	std::vector<std::pair<int,int>> edges;
 	int rectSize = 100.0f;
@@ -483,7 +484,7 @@ void onDisplay() {
 }
 
 void onKeyboard(unsigned char key, int pX, int pY) {
-	float panUnit = 0.1 * 50;
+	float panUnit = 0.1;
 
 	switch (key){
 		case ' ': restart(); break;
@@ -539,13 +540,13 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 			vec2 r = (refAtom.position - reference.getCentroid())*distanceUnit;
 
 			// Fd
-			vec3 tmp = cross(reference.omega, r);
+			vec3 tmp = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
 			vec2 v = reference.v + vec2(tmp.x, tmp.y);
 			vec2 Fd = -dragConstant * v;
 
 			vec2 F = Fc+Fd;
 
-			float M = cross(r, F).z;
+			float M = cross(vec3(r.x, r.y, 0), vec3(F.x, F.y, 0)).z;
 			moleculaB += M/reference.angularMass;
 			atomF = atomF + F;
 		}
