@@ -59,11 +59,14 @@ const char * const fragmentSource = R"(
 
 float massUnit = 1.6735575e-27;
 float chargeUnit = 1.60218e-19;
-float distanceUnit = 1e-19; // TODO
-int massRange = 10;
-int chargeAbsRange = 10;
+float distanceUnit = 1e5;
+int massRange = 3;
+int chargeAbsRange = 3;
 float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
+float dtMs = 1000;
+float dt = dtMs/1000;
+float dragConstant = 10;
 
 int randBetween(int min, int max) {
 	return min + (std::rand() % (max - min + 1));
@@ -136,7 +139,7 @@ struct Atom {
 		Circle::Draw(mvp, color);
 	}
 };
-
+// TODO float rand / RAND_MAX, custom pair
 class GraphCreator {
 	float radius, radiusEps;
 	std::vector<int> groups;
@@ -275,16 +278,37 @@ class GraphCreator {
 	}
 };
 
+struct MoleculeChange {
+	vec2 v = vec2(0,0), position = vec2(0,0);
+	float omega=0, alpha=0;
+
+	MoleculeChange() {}
+
+	MoleculeChange operator+(MoleculeChange other) {
+		MoleculeChange moleculeChange;
+		moleculeChange.position = position + other.position;
+		moleculeChange.v = v + other.v;
+		moleculeChange.alpha = alpha + other.alpha;
+		moleculeChange.omega = omega + other.omega;
+		return moleculeChange;
+	}
+};
+
 class Molecule {
-	vec2 position;
-	std::vector<Atom> atoms;
 	std::vector<std::pair<int,int>> edges;
-    vec2 centroid;
 	int rectSize = 100.0f;
 	unsigned int vao;
 	unsigned int vbo;
+	vec2 position;
 
   public:
+	vec2 v;
+	float alpha;
+	float omega;
+	std::vector<Atom> atoms;
+	float angularMass;
+	vec2 getCentroid() { return position; }
+
 	Molecule() {
 		GraphCreator graphCreator(atomRadius, atomRadiusEps);
 		auto points = graphCreator.getPoints();
@@ -338,11 +362,12 @@ class Molecule {
 		}
         
         // balancepoint
-		centroid = vec2(0, 0);
+		vec2 centroid(0, 0);
 		float sumMass = 0;
 		for (Atom &atom : atoms) {
 			centroid = centroid + atom.m * atom.position;
 			sumMass += atom.m;
+			atom.m *= massUnit;
 		}
 		centroid = centroid / sumMass;
 
@@ -353,7 +378,12 @@ class Molecule {
 		for (Atom &atom: atoms){
 			atom.position = atom.position - centroid;
 		}
-		centroid = vec2(0,0);
+
+		// angular mass
+		angularMass = 0;
+		for (Atom atom: atoms) {
+			angularMass = atom.m * dot(atom.position,atom.position);
+		}
 
 		// random position
 		int x = randBetween(-rectSize/2, rectSize/2);
@@ -361,6 +391,17 @@ class Molecule {
 		position = vec2(x,y);
 		
 		openGlInit(edgePoints);
+	}
+
+	void addChanges(MoleculeChange moleculeChange) {
+		alpha += moleculeChange.alpha;
+		omega += moleculeChange.omega;
+		position = position + moleculeChange.position;
+		v = v + moleculeChange.v;
+
+		for (Atom& atom: atoms) {
+			atom.position = atom.position + moleculeChange.position;
+		}
 	}
 
 	void openGlInit(std::vector<vec2> &edgePoints) {
@@ -383,7 +424,7 @@ class Molecule {
 		glDeleteVertexArrays(1, &vao);
 	}
 
-	mat4 M() { return TranslateMatrix(position); }
+	mat4 M() { return RotationMatrix(alpha, vec3(0,0,1)) * TranslateMatrix(position); }
 
 	void Draw() {
 		glBindVertexArray(vao);
@@ -394,7 +435,9 @@ class Molecule {
 		gpuProgram.setUniform(vec3(1,1,1), "color");
 		glDrawArrays(GL_LINES, 0, 2*edges.size());
 
-		for(Atom atom : atoms) { atom.Draw(TranslateMatrix(position)); }
+		for(Atom atom : atoms) {
+			atom.Draw(RotationMatrix(alpha, vec3(0,0,1)));
+		}
 	}
 };
 
@@ -452,7 +495,6 @@ void onKeyboardUp(unsigned char key, int pX, int pY) {
 }
 
 void onMouseMotion(int pX, int pY) {
-
 	float cX = 2.0f * pX / windowWidth - 1;
 	float cY = 1.0f - 2.0f * pY / windowHeight;
 	printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
@@ -476,6 +518,64 @@ void onMouse(int button, int state, int pX, int pY) {
 	}
 }
 
+MoleculeChange physics(Molecule &reference, Molecule &actor) {
+	vec2 moleculaA(0,0);
+	float moleculaB = 0;
+	for (Atom refAtom: reference.atoms) {
+		vec2 atomF(0,0);
+		for (Atom actorAtom: actor.atoms) {
+			// Fc
+			float k = 8.9875517923e9;
+			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit; 
+			vec2 Fc = k*(refAtom.q*actorAtom.q)/dot(d,d) * normalize(d);
+
+			vec2 r = (refAtom.position - reference.getCentroid())*distanceUnit;
+
+			// Fd
+			vec3 tmp = cross(reference.omega, r);
+			vec2 v = reference.v + vec2(tmp.x, tmp.y);
+			vec2 Fd = -dragConstant * v;
+
+			vec2 F = Fc-Fd;
+
+			float M = cross(r, F).z;
+			moleculaB += M/reference.angularMass;
+			atomF = atomF + F;
+		}
+
+		moleculaA = moleculaA + atomF/refAtom.m;
+	}
+
+	MoleculeChange moleculeChange;
+	moleculeChange.position = reference.v * dt / distanceUnit;
+	moleculeChange.v = moleculaA * dt;
+	moleculeChange.alpha = reference.omega * dt;
+	moleculeChange.omega = moleculaB * dt;
+
+	return moleculeChange;
+}
+
+float lastTime = 0;
 void onIdle() {
 	long time = glutGet(GLUT_ELAPSED_TIME);
+
+	for (float t = lastTime+dtMs; t <= time; t += dtMs) {
+		lastTime = t;
+
+		std::vector<MoleculeChange> moleculeChanges(molecules.size());
+		for (int i = 0; i < molecules.size(); i++) {
+			for (int j = 0; j < molecules.size(); j++) {
+				if(i == j) {
+					continue;
+				}
+				moleculeChanges[i] = moleculeChanges[i] + physics(*molecules[i], *molecules[j]);
+			}
+		}
+
+		// Apply changes
+		for (int i = 0; i < molecules.size(); i++) {
+			molecules[i]->addChanges(moleculeChanges[i]);
+		}
+	}
+	glutPostRedisplay();
 }
