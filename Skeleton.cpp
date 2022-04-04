@@ -389,13 +389,16 @@ class Molecule {
 		int x = randBetween(-rectSize/2, rectSize/2);
 		int y = randBetween(-rectSize/2, rectSize/2);
 		position = vec2(x,y);
+		for (Atom& atom: atoms) {
+			atom.position = atom.position + position;
+		}
 		
 		openGlInit(edgePoints);
 	}
 
 	void addChanges(MoleculeChange moleculeChange) {
 		alpha += moleculeChange.alpha;
-		omega += moleculeChange.omega;
+		omega = omega + moleculeChange.omega; // TODO overflow
 		position = position + moleculeChange.position;
 		v = v + moleculeChange.v;
 
@@ -436,7 +439,7 @@ class Molecule {
 		glDrawArrays(GL_LINES, 0, 2*edges.size());
 
 		for(Atom atom : atoms) {
-			atom.Draw(RotationMatrix(alpha, vec3(0,0,1)));
+			atom.Draw(TranslateMatrix(-getCentroid()) * RotationMatrix(alpha, vec3(0,0,1)) * TranslateMatrix(getCentroid()));
 		}
 	}
 };
