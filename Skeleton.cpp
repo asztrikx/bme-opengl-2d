@@ -69,7 +69,7 @@ float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
 float dtMs = 10;
 float dt = dtMs/1000;
-float dragConstant = 1e-27;
+float dragConstant = 8e-27;
 
 // TODO randFloatBetween
 int randBetween(int min, int max) {
@@ -87,6 +87,7 @@ class Camera2D {
 	void Pan(vec2 translate) { position = position + translate*size; }
 	// TODO delete
 	void Zoom(float scalar) {size = size * scalar; }
+	void Reset() { size = vec2(100,100); position = vec2(0,0); }
 };
 
 GPUProgram gpuProgram;
@@ -299,6 +300,7 @@ struct MoleculeChange {
 };
 
 // TODO do not place m1's atom over m2's
+// TODO tessellate edges
 class Molecule {
 	std::vector<std::pair<int,int>> edges;
 	int rectSize = 100.0f;
@@ -458,6 +460,7 @@ void restart() {
 		}
 		molecules[i] = new Molecule();
 	}
+	camera.Reset();
 }
 
 void onInitialization() {
@@ -554,8 +557,6 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 
 		moleculaA = moleculaA + atomF/refAtom.m;
 	}
-	moleculaA = moleculaA * 1 / 1e2;
-	moleculaB = moleculaB * 1 / 1e2;
 
 	MoleculeChange moleculeChange;
 	moleculeChange.position = reference.v * dt / distanceUnit;
