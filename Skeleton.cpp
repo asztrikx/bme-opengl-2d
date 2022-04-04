@@ -59,14 +59,15 @@ const char * const fragmentSource = R"(
 
 float massUnit = 1.6735575e-27;
 float chargeUnit = 1.60218e-19;
-float distanceUnit = 1e5;
+float distanceUnit = 1e-2;
+
 int massRange = 3;
 int chargeAbsRange = 3;
 float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
-float dtMs = 1000;
+float dtMs = 10;
 float dt = dtMs/1000;
-float dragConstant = 10;
+float dragConstant = 1e-27;
 
 int randBetween(int min, int max) {
 	return min + (std::rand() % (max - min + 1));
@@ -382,7 +383,8 @@ class Molecule {
 		// angular mass
 		angularMass = 0;
 		for (Atom atom: atoms) {
-			angularMass = atom.m * dot(atom.position,atom.position);
+			angularMass = atom.m * dot(atom.position,atom.position) * distanceUnit * distanceUnit;
+			angularMass *= 10;
 		}
 
 		// random position
@@ -398,7 +400,7 @@ class Molecule {
 
 	void addChanges(MoleculeChange moleculeChange) {
 		alpha += moleculeChange.alpha;
-		omega = omega + moleculeChange.omega; // TODO overflow
+		omega += moleculeChange.omega; // TODO overflow
 		position = position + moleculeChange.position;
 		v = v + moleculeChange.v;
 
@@ -529,8 +531,9 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 		for (Atom actorAtom: actor.atoms) {
 			// Fc
 			float k = 8.9875517923e9;
-			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit; 
-			vec2 Fc = k*(refAtom.q*actorAtom.q)/dot(d,d) * normalize(d);
+			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit;
+			vec2 idk = 1/dot(d,d) * normalize(d);
+			vec2 Fc = k*(refAtom.q*actorAtom.q) * idk;
 
 			vec2 r = (refAtom.position - reference.getCentroid())*distanceUnit;
 
@@ -539,7 +542,7 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 			vec2 v = reference.v + vec2(tmp.x, tmp.y);
 			vec2 Fd = -dragConstant * v;
 
-			vec2 F = Fc-Fd;
+			vec2 F = Fc+Fd;
 
 			float M = cross(r, F).z;
 			moleculaB += M/reference.angularMass;
@@ -548,6 +551,8 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 
 		moleculaA = moleculaA + atomF/refAtom.m;
 	}
+	moleculaA = moleculaA * 1 / 1e2;
+	moleculaB = moleculaB * 1 / 1e2;
 
 	MoleculeChange moleculeChange;
 	moleculeChange.position = reference.v * dt / distanceUnit;
