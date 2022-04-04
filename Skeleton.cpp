@@ -38,10 +38,12 @@ const char * const vertexSource = R"(
 	precision highp float;
 
 	uniform mat4 MVP;
-	layout(location = 0) in vec2 vp;
+	layout(location = 0) in vec2 v;
 
 	void main() {
-		gl_Position = vec4(vp.x, vp.y, 0, 1) * MVP;
+		//float w = pow(v.x*v.x + v.y*v.y + 1, 0.5);
+		//gl_Position = vec4(v.x/(w + 1), v.y/(w + 1), 0, 1) * MVP;
+		gl_Position = vec4(v.x, v.y, 0, 1) * MVP;
 	}
 )";
 
@@ -327,25 +329,24 @@ class Molecule {
 		}
 
 		// rand m, q
-		float sumCharge = 0;
+		int sumCharge = 0;
 		for (Atom& atom: atoms) {
 			atom.m = randBetween(1, massRange);
 			atom.q = randBetween(-chargeAbsRange, chargeAbsRange);
 			sumCharge += atom.q;
 		}
 
-		// sum q = 0 fixup
-		float fixupCharge = sumCharge / atoms.size();
-		float chargeAbsMax = 1.0f;
-		for (Atom& atom: atoms) {
-			atom.q -= fixupCharge;
-			chargeAbsMax = std::max(fabs(atom.q), chargeAbsMax);
-		}
-
-		// q scale into range <= fixup can break this
-		if (chargeAbsMax > chargeAbsRange) {
-			for (Atom& atom: atoms) {
-				atom.q *= chargeAbsRange / chargeAbsMax;
+		if (sumCharge != 0) {
+			int signal = sumCharge < 0 ? -1 : 1;
+			sumCharge = abs(sumCharge);
+			for (int i = 1; i <= sumCharge; i++) {
+				do {
+					int index = randBetween(0, atoms.size()-1);
+					if (atoms[index].q != chargeAbsRange * -signal) {
+						atoms[index].q -= signal;
+						break;
+					}
+				} while (true);
 			}
 		}
 
@@ -482,7 +483,7 @@ void onDisplay() {
 }
 
 void onKeyboard(unsigned char key, int pX, int pY) {
-	float panUnit = 0.1*distanceUnit * 50; // TODO fix this, 0.1 only, slow
+	float panUnit = 0.1 * 50;
 
 	switch (key){
 		case ' ': restart(); break;
