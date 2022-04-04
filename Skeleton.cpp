@@ -41,9 +41,9 @@ const char * const vertexSource = R"(
 	layout(location = 0) in vec2 v;
 
 	void main() {
-		//float w = pow(v.x*v.x + v.y*v.y + 1, 0.5);
-		//gl_Position = vec4(v.x/(w + 1), v.y/(w + 1), 0, 1) * MVP;
-		gl_Position = vec4(v.x, v.y, 0, 1) * MVP;
+		vec4 v2 = vec4(v.x, v.y, 0, 1) * MVP;
+		float w = pow(v2.x*v2.x + v2.y*v2.y + 1, 0.5);
+		gl_Position = vec4(v2.x/(w + 1), v2.y/(w + 1), 0, 1);
 	}
 )";
 
@@ -71,6 +71,7 @@ float dtMs = 10;
 float dt = dtMs/1000;
 float dragConstant = 1e-27;
 
+// TODO randFloatBetween
 int randBetween(int min, int max) {
 	return min + (std::rand() % (max - min + 1));
 }
