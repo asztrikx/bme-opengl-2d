@@ -437,10 +437,10 @@ void onKeyboard(unsigned char key, int pX, int pY) {
 
 	switch (key){
 		case ' ': restart(); break;
-		case 'a': camera.Pan(vec2(-panUnit,0)); break;
+		case 's': camera.Pan(vec2(-panUnit,0)); break;
 		case 'd': camera.Pan(vec2(panUnit,0)); break;
-		case 's': camera.Pan(vec2(0,-panUnit)); break;
-		case 'w': camera.Pan(vec2(0,panUnit)); break;
+		case 'x': camera.Pan(vec2(0,-panUnit)); break;
+		case 'e': camera.Pan(vec2(0,panUnit)); break;
 	}
 	glutPostRedisplay();
 }
