@@ -61,15 +61,15 @@ const char * const fragmentSource = R"(
 
 float massUnit = 1.6735575e-27;
 float chargeUnit = 1.60218e-19;
-float distanceUnit = 1e-2;
+float distanceUnit = 0.5*1e-2;
 
 int massRange = 2;
-int chargeAbsRange = 1;
+int chargeAbsRange = 2;
 float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
 float dtMs = 10;
 float dt = dtMs/1000;
-float dragConstant = 10e-27;
+float dragConstant = 5*10e-27;
 
 int randBetween(int min, int max) {
 	return min + (std::rand() % (max - min + 1));
@@ -241,8 +241,6 @@ class GraphCreator {
 	}
 };
 
-// TODO do not place m1's atom over m2's
-// TODO tessellate edges
 class Molecule {
 	std::vector<std::pair<int,int>> edges;
 	int rectSize = 100.0f;
@@ -497,7 +495,7 @@ void physics(Molecule &reference, Molecule &actor) {
 			sumF = sumF + F;
 		}
 
-		reference.v = reference.v + sumF/refAtom.m * dt; 
+		reference.v = reference.v + sumF/refAtom.m * dt; //molecule M
 		reference.addTranslate(reference.v * dt / distanceUnit);
 		reference.omega += sumM/reference.angularMass * dt;
 		reference.alpha += reference.omega * dt;
