@@ -44,6 +44,7 @@ const char * const vertexSource = R"(
 		vec4 v2 = vec4(v.x, v.y, 0, 1) * MVP;
 		float w = pow(v2.x*v2.x + v2.y*v2.y + 1, 0.5);
 		gl_Position = vec4(v2.x/(w + 1), v2.y/(w + 1), 0, 1);
+		//gl_Position = vec4(v.xy, 0, 1)*MVP;
 	}
 )";
 
@@ -69,7 +70,7 @@ float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
 float dtMs = 10;
 float dt = dtMs/1000;
-float dragConstant = 8e-27;
+float dragConstant = 10e-27;
 
 // TODO randFloatBetween
 int randBetween(int min, int max) {
@@ -530,10 +531,10 @@ void onMouse(int button, int state, int pX, int pY) {
 }
 
 MoleculeChange physics(Molecule &reference, Molecule &actor) {
-	vec2 moleculaA(0,0);
+	vec2 moleculaF(0,0);
+	float sumMass = 0;
 	float moleculaB = 0;
 	for (Atom refAtom: reference.atoms) {
-		vec2 atomF(0,0);
 		for (Atom actorAtom: actor.atoms) {
 			// Fc
 			float k = 8.9875517923e9;
@@ -552,11 +553,12 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 
 			float M = cross(vec3(r.x, r.y, 0), vec3(F.x, F.y, 0)).z;
 			moleculaB += M/reference.angularMass;
-			atomF = atomF + F;
+			moleculaF = moleculaF + F;
+			sumMass += refAtom.m;
 		}
-
-		moleculaA = moleculaA + atomF/refAtom.m;
 	}
+
+	vec2 moleculaA = moleculaF / sumMass;
 
 	MoleculeChange moleculeChange;
 	moleculeChange.position = reference.v * dt / distanceUnit;
