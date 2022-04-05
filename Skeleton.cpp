@@ -78,18 +78,15 @@ int randBetween(int min, int max) {
 }
 
 class Camera2D {
-	vec2 initSize = vec2(45,45);
 	vec2 position = vec2(0, 0);
-	vec2 size;
+	vec2 size = vec2(45,45);
 
   public:
 	mat4 V() { return TranslateMatrix(-position); }
 	mat4 P() { return ScaleMatrix(vec3(2/size.x, 2/size.y, 0)); }
 
 	void Pan(vec2 translate) { position = position + translate*size; }
-	// TODO delete
-	void Zoom(float scalar) {size = size * scalar; }
-	void Reset() { size = initSize; position = vec2(0,0); }
+	void Reset() { position = vec2(0,0); }
 };
 
 GPUProgram gpuProgram;
@@ -444,8 +441,6 @@ void onKeyboard(unsigned char key, int pX, int pY) {
 		case 'd': camera.Pan(vec2(panUnit,0)); break;
 		case 's': camera.Pan(vec2(0,-panUnit)); break;
 		case 'w': camera.Pan(vec2(0,panUnit)); break;
-		case 'z': camera.Zoom(0.9f); break;
-		case 'Z': camera.Zoom(1.1f); break;
 	}
 	glutPostRedisplay();
 }
