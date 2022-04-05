@@ -70,7 +70,7 @@ float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
 float dtMs = 10;
 float dt = dtMs/1000;
-float dragConstant = 10e-27;
+float dragConstant = 5e-27;
 
 // TODO randFloatBetween
 int randBetween(int min, int max) {
@@ -537,10 +537,9 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 	for (Atom refAtom: reference.atoms) {
 		for (Atom actorAtom: actor.atoms) {
 			// Fc
-			float k = 8.9875517923e9;
+			float k = 2*8.9875517923e9;
 			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit;
-			vec2 idk = 1/dot(d,d) * normalize(d);
-			vec2 Fc = k*(refAtom.q*actorAtom.q) * idk;
+			vec2 Fc = k * (refAtom.q*actorAtom.q) / length(d) * normalize(d);
 
 			vec2 r = (refAtom.position - reference.getCentroid())*distanceUnit;
 
