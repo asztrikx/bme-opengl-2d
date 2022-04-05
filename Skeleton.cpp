@@ -248,6 +248,7 @@ class Molecule {
 	int rectSize = 100.0f;
 	unsigned int vao;
 	unsigned int vbo;
+	int edgeTesselation = 100;
 	vec2 position;
 
   public:
@@ -257,6 +258,14 @@ class Molecule {
 	std::vector<Atom> atoms;
 	float angularMass;
 	vec2 getCentroid() { return position; }
+
+	void addTranslate(vec2 translate) {
+		position = position + translate;
+
+		for (Atom& atom: atoms) {
+			atom.position = atom.position + translate;
+		}
+	}
 
 	Molecule() {
 		GraphCreator graphCreator(atomRadius, atomRadiusEps);
@@ -268,10 +277,16 @@ class Molecule {
 		edges = graphCreator.edges;
 
 		// tesselation
-		std::vector<vec2> edgePoints(edges.size()*2);
+		std::vector<vec2> edgePoints;
 		for (size_t i = 0; i < edges.size(); i++) {
-			edgePoints[2*i] = atoms[edges[i].first].position;
-			edgePoints[2*i+1] = atoms[edges[i].second].position; 
+			vec2 a = atoms[edges[i].first].position;
+			vec2 b = atoms[edges[i].second].position;
+
+			for (int j = 0; j < edgeTesselation; j++) {
+				float t = (float) j / (edgeTesselation - 1);
+				vec2 p = a*t + b*(1-t);
+				edgePoints.push_back(p);
+			}
 		}
 
 		// rand m, q
@@ -345,14 +360,6 @@ class Molecule {
 		openGlInit(edgePoints);
 	}
 
-	void addTranslate(vec2 translate) {
-		position = position + translate;
-
-		for (Atom& atom: atoms) {
-			atom.position = atom.position + translate;
-		}
-	}
-
 	void openGlInit(std::vector<vec2> &edgePoints) {
 		glGenVertexArrays(1, &vao);
 		glBindVertexArray(vao);
@@ -380,7 +387,10 @@ class Molecule {
 		mat4 mvp = M() * camera.V() * camera.P();
 		gpuProgram.setUniform(mvp, "MVP");
 		gpuProgram.setUniform(vec3(1,1,1), "color");
-		glDrawArrays(GL_LINES, 0, 2*edges.size());
+
+		for (int i = 0; i < edges.size(); i++) {
+			glDrawArrays(GL_LINE_STRIP, i*edgeTesselation, edgeTesselation);
+		}
 
 		for(Atom atom : atoms) {
 			atom.Draw(TranslateMatrix(-getCentroid()) * RotationMatrix(alpha, vec3(0,0,1)) * TranslateMatrix(getCentroid()));
