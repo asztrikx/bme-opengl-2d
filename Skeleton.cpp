@@ -78,8 +78,9 @@ int randBetween(int min, int max) {
 }
 
 class Camera2D {
+	vec2 initSize = vec2(45,45);
 	vec2 position = vec2(0, 0);
-	vec2 size = vec2(100, 100);
+	vec2 size;
 
   public:
 	mat4 V() { return TranslateMatrix(-position); }
@@ -88,7 +89,7 @@ class Camera2D {
 	void Pan(vec2 translate) { position = position + translate*size; }
 	// TODO delete
 	void Zoom(float scalar) {size = size * scalar; }
-	void Reset() { size = vec2(100,100); position = vec2(0,0); }
+	void Reset() { size = initSize; position = vec2(0,0); }
 };
 
 GPUProgram gpuProgram;
