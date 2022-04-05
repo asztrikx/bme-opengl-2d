@@ -71,9 +71,12 @@ float dtMs = 10;
 float dt = dtMs/1000;
 float dragConstant = 10e-27;
 
-// TODO randFloatBetween
 int randBetween(int min, int max) {
 	return min + (std::rand() % (max - min + 1));
+}
+
+float randFloatBetween(int min, int max) {
+	return (float) std::rand() / RAND_MAX * (max - min) + min;
 }
 
 class Camera2D {
@@ -142,7 +145,7 @@ struct Atom {
 		Circle::Draw(mvp, color);
 	}
 };
-// TODO float rand / RAND_MAX, custom pair
+
 class GraphCreator {
 	float radius, radiusEps;
 	float rectSize = 50.0f;
@@ -215,7 +218,7 @@ class GraphCreator {
 			bool good;
 			do {
 				good = true;
-				point = vec2(randBetween(min.x, max.x), randBetween(min.y, max.y));
+				point = vec2(randFloatBetween(min.x, max.x), randFloatBetween(min.y, max.y));
 
 				for (int j = 0; j < i; j++) {
 					vec2 d = point - points[j];
