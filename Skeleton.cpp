@@ -64,13 +64,13 @@ float massUnit = 1.6735575e-27;
 float chargeUnit = 1.60218e-19;
 float distanceUnit = 1e-2;
 
-int massRange = 3;
-int chargeAbsRange = 3;
+int massRange = 2;
+int chargeAbsRange = 1;
 float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
 float dtMs = 10;
 float dt = dtMs/1000;
-float dragConstant = 5e-27;
+float dragConstant = 10e-27;
 
 // TODO randFloatBetween
 int randBetween(int min, int max) {
@@ -284,22 +284,6 @@ class GraphCreator {
 	}
 };
 
-struct MoleculeChange {
-	vec2 v = vec2(0,0), position = vec2(0,0);
-	float omega=0, alpha=0;
-
-	MoleculeChange() {}
-
-	MoleculeChange operator+(MoleculeChange other) {
-		MoleculeChange moleculeChange;
-		moleculeChange.position = position + other.position;
-		moleculeChange.v = v + other.v;
-		moleculeChange.alpha = alpha + other.alpha;
-		moleculeChange.omega = omega + other.omega;
-		return moleculeChange;
-	}
-};
-
 // TODO do not place m1's atom over m2's
 // TODO tessellate edges
 class Molecule {
@@ -404,14 +388,11 @@ class Molecule {
 		openGlInit(edgePoints);
 	}
 
-	void addChanges(MoleculeChange moleculeChange) {
-		alpha += moleculeChange.alpha;
-		omega += moleculeChange.omega; // TODO overflow
-		position = position + moleculeChange.position;
-		v = v + moleculeChange.v;
+	void addTranslate(vec2 translate) {
+		position = position + translate;
 
 		for (Atom& atom: atoms) {
-			atom.position = atom.position + moleculeChange.position;
+			atom.position = atom.position + translate;
 		}
 	}
 
@@ -530,11 +511,10 @@ void onMouse(int button, int state, int pX, int pY) {
 	}
 }
 
-MoleculeChange physics(Molecule &reference, Molecule &actor) {
-	vec2 moleculaF(0,0);
-	float sumMass = 0;
-	float moleculaB = 0;
+void physics(Molecule &reference, Molecule &actor) {
 	for (Atom refAtom: reference.atoms) {
+		vec2 sumF(0,0);
+		float sumM = 0;
 		for (Atom actorAtom: actor.atoms) {
 			// Fc
 			float k = 2*8.9875517923e9;
@@ -551,21 +531,15 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 			vec2 F = Fc+Fd;
 
 			float M = cross(vec3(r.x, r.y, 0), vec3(F.x, F.y, 0)).z;
-			moleculaB += M/reference.angularMass;
-			moleculaF = moleculaF + F;
-			sumMass += refAtom.m;
+			sumM += M;
+			sumF = sumF + F;
 		}
+
+		reference.v = reference.v + sumF/refAtom.m * dt; 
+		reference.addTranslate(reference.v * dt / distanceUnit);
+		reference.omega += sumM/reference.angularMass * dt;
+		reference.alpha += reference.omega * dt;
 	}
-
-	vec2 moleculaA = moleculaF / sumMass;
-
-	MoleculeChange moleculeChange;
-	moleculeChange.position = reference.v * dt / distanceUnit;
-	moleculeChange.v = moleculaA * dt;
-	moleculeChange.alpha = reference.omega * dt;
-	moleculeChange.omega = moleculaB * dt;
-
-	return moleculeChange;
 }
 
 float lastTime = 0;
@@ -575,19 +549,13 @@ void onIdle() {
 	for (float t = lastTime+dtMs; t <= time; t += dtMs) {
 		lastTime = t;
 
-		std::vector<MoleculeChange> moleculeChanges(molecules.size());
 		for (int i = 0; i < molecules.size(); i++) {
 			for (int j = 0; j < molecules.size(); j++) {
 				if(i == j) {
 					continue;
 				}
-				moleculeChanges[i] = moleculeChanges[i] + physics(*molecules[i], *molecules[j]);
+				physics(*molecules[i], *molecules[j]);
 			}
-		}
-
-		// Apply changes
-		for (int i = 0; i < molecules.size(); i++) {
-			molecules[i]->addChanges(moleculeChanges[i]);
 		}
 	}
 	glutPostRedisplay();
