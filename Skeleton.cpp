@@ -148,10 +148,6 @@ struct Atom {
 // TODO float rand / RAND_MAX, custom pair
 class GraphCreator {
 	float radius, radiusEps;
-	std::vector<int> groups;
-	int uniqueGroups;
-	std::vector<vec2> points;
-	std::vector<std::pair<int, int>> edges;
 	float rectSize = 50.0f;
 
 	int direction(vec2 base, vec2 from, vec2 to) {
@@ -205,82 +201,43 @@ class GraphCreator {
 		return false;
 	}
 
-	int find(int i) {
-		if (groups[i] == i) {
-			return i;
-		}
-		return groups[i] = find(groups[i]);
-	}
-
   public:
-	GraphCreator(float radius, float radiusEps) : radius(radius), radiusEps(radiusEps) {}
+	std::vector<vec2> points;
+	std::vector<std::pair<int, int>> edges;
 
-	std::vector<std::pair<int, int>> getEdges() {
-		int n = points.size();
-		groups.resize(n);
-		uniqueGroups = n;
-		for (int i = 0; i < n; i++) {
-			groups[i] = i;
-		}
-
-		std::vector<std::pair<int, int>> allEdges;
-		for (int i = 0; i < n; i++) {
-			for (int j = i + 1; j < n; j++) {
-				allEdges.push_back(std::make_pair(i,j));
-			}
-		}
-		
-		while (uniqueGroups != 1) {
-			int index = randBetween(0, allEdges.size()-1);
-			std::pair<int, int> edge = allEdges[index];
-			vec2 a = points[edge.first];
-			vec2 b = points[edge.second];
-
-			if(edgeCrossesEdgeAny(a, b) || edgeCrossesCircleAny(edge.first, edge.second)) {
-				continue;
-			}
-
-			int rootA = find(edge.first);
-			int rootB = find(edge.second);
-			if (rootA == rootB) {
-				continue;
-			}
-
-			groups[rootA] = groups[rootB];
-			uniqueGroups--;
-
-			allEdges.erase(allEdges.begin() + index);
-			edges.push_back(edge);
-		}
-
-		return edges;
-	}
-
-	std::vector<vec2> getPoints() {
-		points.resize(randBetween(2, 8));
+	GraphCreator(float radius, float radiusEps) : radius(radius), radiusEps(radiusEps) {
+		int size = randBetween(2, 8);
 		vec2 min(-rectSize/2, -rectSize/2);
 		vec2 max(rectSize/2, rectSize/2);
 		float diameter = 2 * radius;
 		float minDistance = diameter + radiusEps;
 
-		for (size_t i = 0; i < points.size(); i++) {
+		for (int i = 0; i < size; i++) {
+			vec2 point;
+
 			bool good;
 			do {
 				good = true;
-				points[i] = vec2(randBetween(min.x, max.x), randBetween(min.y, max.y));
+				point = vec2(randBetween(min.x, max.x), randBetween(min.y, max.y));
 
-				for (size_t j = 0; j < i; j++) {
-					vec2 distanceVec = points[i] - points[j];
-					float distance = dot(distanceVec, distanceVec);
-					if (distance < minDistance * minDistance) {
+				for (int j = 0; j < i; j++) {
+					vec2 d = point - points[j];
+					if (length(d) < minDistance) {
 						good = false;
 						break;
 					}
 				}
 			} while(!good);
-		}
+			points.push_back(point);
 
-		return points;
+			// edge creation
+			if(i == 0) { continue; }
+			int index;
+			do{
+				index = randBetween(0, i-1);
+			} while(edgeCrossesEdgeAny(points[i], points[index]) || edgeCrossesCircleAny(i, index));
+			edges.push_back(std::make_pair(i, index));
+		}
 	}
 };
 
@@ -303,12 +260,12 @@ class Molecule {
 
 	Molecule() {
 		GraphCreator graphCreator(atomRadius, atomRadiusEps);
-		auto points = graphCreator.getPoints();
+		std::vector<vec2> points = graphCreator.points;
 		atoms.resize(points.size(), Atom(atomRadius));
 		for (size_t i = 0; i < atoms.size(); i++) {
 			atoms[i].position = points[i];
 		}
-		edges = graphCreator.getEdges();
+		edges = graphCreator.edges;
 
 		// tesselation
 		std::vector<vec2> edgePoints(edges.size()*2);
@@ -403,11 +360,9 @@ class Molecule {
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		
-		// SIZEOF(FLOAT)
 		glBufferData(GL_ARRAY_BUFFER, edgePoints.size()*sizeof(vec2), &edgePoints[0], GL_STATIC_DRAW);
 
 		glEnableVertexAttribArray(0);
-		// SIZEOF(FLOAT)
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 	}
 
@@ -494,7 +449,6 @@ void onMouseMotion(int pX, int pY) {
 }
 
 void onMouse(int button, int state, int pX, int pY) {
-
 	float cX = 2.0f * pX / windowWidth - 1;
 	float cY = 1.0f - 2.0f * pY / windowHeight;
 
