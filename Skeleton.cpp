@@ -44,7 +44,6 @@ const char * const vertexSource = R"(
 		vec4 v2 = vec4(v.x, v.y, 0, 1) * MVP;
 		float w = pow(v2.x*v2.x + v2.y*v2.y + 1, 0.5);
 		gl_Position = vec4(v2.x/(w + 1), v2.y/(w + 1), 0, 1);
-		//gl_Position = vec4(v.xy, 0, 1)*MVP;
 	}
 )";
 
