@@ -95,13 +95,13 @@ GPUProgram gpuProgram;
 Camera2D camera;
 
 class Circle {
-	static const int tesselationCount = 50;
-	static const int count = tesselationCount + 1;
-	inline static unsigned int vao;
+	const int tesselationCount = 50;
+	const int count = tesselationCount + 1;
+	unsigned int vao;
 
   public:
-	static void Create() {
-		glGenVertexArrays(1, &Circle::vao);
+	void Create() {
+		glGenVertexArrays(1, &vao);
 		glBindVertexArray(vao);
 
 		unsigned int vbo;
@@ -120,7 +120,7 @@ class Circle {
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), nullptr);
 	}
 
-	static void Draw(mat4 MVP, vec3 color) {
+	void Draw(mat4 MVP, vec3 color) {
 		glBindVertexArray(vao);
 
 		gpuProgram.setUniform(MVP, "MVP");
@@ -129,6 +129,8 @@ class Circle {
 		glDrawArrays(GL_TRIANGLE_FAN, 0, count);
 	}
 };
+
+Circle circle;
 
 struct Atom {
 	vec2 position;
@@ -142,7 +144,7 @@ struct Atom {
 
 	void Draw(mat4 T) {
 		mat4 mvp = M() * T * camera.V() * camera.P();
-		Circle::Draw(mvp, color);
+		circle.Draw(mvp, color);
 	}
 };
 
@@ -411,7 +413,7 @@ void restart() {
 void onInitialization() {
 	glViewport(0, 0, windowWidth, windowHeight);
 
-	Circle::Create();
+	circle.Create();
 	for (int i = 1; i <= 2; i++) {
 		molecules.push_back(nullptr);
 	}
