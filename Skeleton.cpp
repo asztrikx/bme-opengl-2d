@@ -451,26 +451,9 @@ void onKeyboardUp(unsigned char key, int pX, int pY) {
 }
 
 void onMouseMotion(int pX, int pY) {
-	float cX = 2.0f * pX / windowWidth - 1;
-	float cY = 1.0f - 2.0f * pY / windowHeight;
-	printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
 }
 
 void onMouse(int button, int state, int pX, int pY) {
-	float cX = 2.0f * pX / windowWidth - 1;
-	float cY = 1.0f - 2.0f * pY / windowHeight;
-
-	char * buttonStat;
-	switch (state) {
-	case GLUT_DOWN: buttonStat = "pressed"; break;
-	case GLUT_UP:   buttonStat = "released"; break;
-	}
-
-	switch (button) {
-	case GLUT_LEFT_BUTTON:   printf("Left button %s at (%3.2f, %3.2f)\n", buttonStat, cX, cY);   break;
-	case GLUT_MIDDLE_BUTTON: printf("Middle button %s at (%3.2f, %3.2f)\n", buttonStat, cX, cY); break;
-	case GLUT_RIGHT_BUTTON:  printf("Right button %s at (%3.2f, %3.2f)\n", buttonStat, cX, cY);  break;
-	}
 }
 
 void physics(Molecule &reference, Molecule &actor) {
@@ -497,7 +480,7 @@ void physics(Molecule &reference, Molecule &actor) {
 			sumF = sumF + F;
 		}
 
-		reference.v = reference.v + sumF/refAtom.m * dt; //molecule M
+		reference.v = reference.v + sumF/refAtom.m * dt; //molecule M?
 		reference.addTranslate(reference.v * dt / distanceUnit);
 		reference.omega += sumM/reference.angularMass * dt;
 		reference.alpha += reference.omega * dt;
