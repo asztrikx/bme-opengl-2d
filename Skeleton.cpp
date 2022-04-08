@@ -457,34 +457,37 @@ void onMouse(int button, int state, int pX, int pY) {
 }
 
 void physics(Molecule &reference, Molecule &actor) {
+	float sumM = 0;
+	vec2 sumF(0, 0);
+	float summ = 0;
 	for (Atom refAtom: reference.atoms) {
-		vec2 sumF(0,0);
-		float sumM = 0;
+		vec2 sumFc(0,0);
+		vec2 r = (refAtom.position - reference.getCentroid())*distanceUnit;
 		for (Atom actorAtom: actor.atoms) {
 			// Fc
 			float k = 2*8.9875517923e9;
 			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit;
 			vec2 Fc = k * (refAtom.q*actorAtom.q) / length(d) * normalize(d);
-
-			vec2 r = (refAtom.position - reference.getCentroid())*distanceUnit;
-
-			// Fd
-			vec3 tmp = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
-			vec2 v = reference.v + vec2(tmp.x, tmp.y);
-			vec2 Fd = -dragConstant * v;
-
-			vec2 F = Fc+Fd;
-
-			float M = cross(vec3(r.x, r.y, 0), vec3(F.x, F.y, 0)).z;
-			sumM += M;
-			sumF = sumF + F;
+			sumFc = sumFc + Fc;
 		}
 
-		reference.v = reference.v + sumF/refAtom.m * dt; //molecule M?
-		reference.addTranslate(reference.v * dt / distanceUnit);
-		reference.omega += sumM/reference.angularMass * dt;
-		reference.alpha += reference.omega * dt;
+		// Fd
+		vec3 tmp = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
+		vec2 v = reference.v + vec2(tmp.x, tmp.y);
+		vec2 Fd = -dragConstant * v;
+
+		vec2 F = sumFc+Fd;
+		float M = cross(vec3(r.x, r.y, 0), vec3(F.x, F.y, 0)).z;
+		
+		sumM += M;
+		summ += refAtom.m;
+		sumF = sumF + F;
 	}
+
+	reference.v = reference.v + sumF/summ * dt; //molecule M?
+	reference.addTranslate(reference.v * dt / distanceUnit);
+	reference.omega += sumM/reference.angularMass * dt;
+	reference.alpha += reference.omega * dt;
 }
 
 float lastTime = 0;
