@@ -59,6 +59,7 @@ const char * const fragmentSource = R"(
 	}
 )";
 
+#define dbg if(false)
 float massUnit = 1.6735575e-27;
 float chargeUnit = 1.60218e-19;
 float distanceUnit = 0.5*1e-3;
@@ -493,21 +494,21 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 			// Fc
 			float k = 2*8.9875517923e9;
 			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit; // TODO really small distance
-			printf("%le %le\n", refAtom.q, actorAtom.q);
+			dbg printf("%le %le\n", refAtom.q, actorAtom.q);
 			vec2 Fc = k * (refAtom.q*actorAtom.q) / length(d) * normalize(d);
 			sumFc = sumFc + Fc;
 		}
-		printf("sum force: %le %le %le\n", sumFc.x, sumFc.y, reference.omega);
+		dbg printf("sum force: %le %le %le\n", sumFc.x, sumFc.y, reference.omega);
 
 		vec2 Fc_k = dot(sumFc, normalize(r)) * normalize(r);
 		vec2 Fc_move = sumFc - Fc_k;
 
-		printf("Fck force: %le %le %le\n", Fc_k.x, Fc_k.y, reference.omega);
+		dbg printf("Fck force: %le %le %le\n", Fc_k.x, Fc_k.y, reference.omega);
 		// Fd
 		vec3 v_k = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
 		vec2 Fd_k = -dragConstant * vec2(v_k.x, v_k.y);
 
-		printf("Fdk force: %le %le %le\n", Fd_k.x, Fd_k.y, reference.omega);
+		dbg printf("Fdk force: %le %le %le\n", Fd_k.x, Fd_k.y, reference.omega);
 
 		vec2 F_k = Fc_k + Fd_k;
 		float M = cross(vec3(r.x, r.y, 0), vec3(F_k.x, F_k.y, 0)).z;
@@ -525,10 +526,10 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 	moleculeChange.omega = sumM/reference.angularMass * dt;
 	moleculeChange.alpha = reference.omega * dt;
 
-	printf("v: %le\n", moleculeChange.v/distanceUnit);
-	printf("p: %le\n", moleculeChange.position);
-	printf("beta: %le\n", moleculeChange.omega);
-	printf("alpha: %le\n", moleculeChange.alpha);
+	dbg printf("v: %le %le\n", moleculeChange.v.x/distanceUnit, moleculeChange.v.y/distanceUnit);
+	dbg printf("p: %le %le\n", moleculeChange.position.x, moleculeChange.position.y);
+	dbg printf("beta: %le\n", moleculeChange.omega);
+	dbg printf("alpha: %le\n", moleculeChange.alpha);
 
 	return moleculeChange;
 }
