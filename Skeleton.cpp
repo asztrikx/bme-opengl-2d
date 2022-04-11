@@ -59,17 +59,17 @@ const char * const fragmentSource = R"(
 	}
 )";
 
-#define dbg if(false)
+#define dbg if(true)
 float massUnit = 1.6735575e-27;
 float chargeUnit = 1.60218e-19;
-float distanceUnit = 0.5*1e-3;
+float distanceUnit = 0.5*1e-2;
 
 int massRange = 2;
 int chargeAbsRange = 2;
 float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
-float dtMs = 10;
-float dt = dtMs/1000;
+int dtMs = 10;
+float dt = dtMs/1000.0f;
 float dragConstant = 100e-27;
 
 int randBetween(int min, int max) {
@@ -534,11 +534,11 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 	return moleculeChange;
 }
 
-float lastTime = 0;
+long lastTime = 0;
 void onIdle() {
 	long time = glutGet(GLUT_ELAPSED_TIME);
 
-	for (float t = lastTime+dtMs; t <= time; t += dtMs) {
+	for (long t = lastTime+dtMs; t <= time; t += dtMs) {
 		lastTime = t;
 
 		std::vector<MoleculeChange> moleculeChanges(molecules.size());
