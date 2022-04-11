@@ -69,7 +69,8 @@ float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
 float dtMs = 10;
 float dt = dtMs/1000;
-float dragConstant = 100e-27;
+float dragConstant_k = 1e-27;
+float dragConstant_move = 100e-27;
 
 int randBetween(int min, int max) {
 	return min + (std::rand() % (max - min + 1));
@@ -477,7 +478,7 @@ void onMouse(int button, int state, int pX, int pY) {
 
 MoleculeChange physics(Molecule &reference, Molecule &actor) {
 	float sumM = 0;
-	vec2 sumF_move(0, 0);
+	vec2 sumFc_move(0, 0);
 	float summ = 0;
 	for (Atom refAtom: reference.atoms) {
 		vec2 sumFc(0,0);
@@ -490,33 +491,33 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 			sumFc = sumFc + Fc;
 		}
 
-		// Fd
-		vec3 vk = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
-		vec2 Fd_k = -dragConstant * vec2(vk.x, vk.y);
-
 		vec2 Fc_k = dot(sumFc, normalize(r)) * normalize(r);
 		vec2 Fc_move = sumFc - Fc_k;
 
-		vec2 F_k = Fc_k+Fd_k;
+		// Fd
+		vec3 v_k = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
+		vec2 Fd_k = -dragConstant_k * vec2(v_k.x, v_k.y);
+
+		vec2 F_k = Fc_k + Fd_k;
 		float M = cross(vec3(r.x, r.y, 0), vec3(F_k.x, F_k.y, 0)).z;
 		
 		sumM += M;
 		summ += refAtom.m;
-		sumF_move = sumF_move + Fc_move;
+		sumFc_move = sumFc_move + Fc_move;
 	}
-	vec2 Fd_move = -dragConstant * reference.v;
-	sumF_move = sumF_move + Fd_move;
-
-	printf("v: %f\n", reference.v + sumF_move/summ * dt);
-	printf("p: %f\n", reference.v * dt / distanceUnit);
-	printf("beta: %f\n", sumM/reference.angularMass * dt);
-	printf("alpha: %f\n", reference.omega * dt);
+	vec2 Fd_move = -dragConstant_move * reference.v;
+	vec2 F_move = sumFc_move + Fd_move;
 
 	MoleculeChange moleculeChange;
-	moleculeChange.v = sumF_move/summ * dt;
+	moleculeChange.v = F_move/summ * dt;
 	moleculeChange.position = reference.v * dt / distanceUnit;
 	moleculeChange.omega = sumM/reference.angularMass * dt;
 	moleculeChange.alpha = reference.omega * dt;
+
+	printf("v: %e\n", moleculeChange.v/distanceUnit);
+	printf("p: %e\n", moleculeChange.position);
+	printf("beta: %e\n", moleculeChange.omega);
+	printf("alpha: %e\n", moleculeChange.alpha);
 
 	return moleculeChange;
 }
