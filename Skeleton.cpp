@@ -69,8 +69,7 @@ float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
 float dtMs = 10;
 float dt = dtMs/1000;
-float dragConstant_k = 1e-27;
-float dragConstant_move = 100e-27;
+float dragConstant = 100e-27;
 
 int randBetween(int min, int max) {
 	return min + (std::rand() % (max - min + 1));
@@ -506,7 +505,7 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 		printf("Fck force: %le %le %le\n", Fc_k.x, Fc_k.y, reference.omega);
 		// Fd
 		vec3 v_k = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
-		vec2 Fd_k = -dragConstant_k * vec2(v_k.x, v_k.y);
+		vec2 Fd_k = -dragConstant * vec2(v_k.x, v_k.y);
 
 		printf("Fdk force: %le %le %le\n", Fd_k.x, Fd_k.y, reference.omega);
 
@@ -517,7 +516,7 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 		summ += refAtom.m;
 		sumFc_move = sumFc_move + Fc_move;
 	}
-	vec2 Fd_move = -dragConstant_move * reference.v;
+	vec2 Fd_move = -dragConstant * reference.v;
 	vec2 F_move = sumFc_move + Fd_move;
 
 	MoleculeChange moleculeChange;
