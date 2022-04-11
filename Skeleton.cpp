@@ -204,6 +204,26 @@ class GraphCreator {
 		return false;
 	}
 
+	bool pointCrossesAny(vec2 point) {
+		float diameter = 2 * radius;
+		float minDistance = diameter + radiusEps;
+
+		for (int j = 0; j < points.size(); j++) {
+			vec2 d = point - points[j];
+			if (length(d) < minDistance) {
+				return true;
+			}
+		}
+
+		for (auto edge: edges) {
+			if (edgeCrossesCircle(edge.first, edge.second, point)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
   public:
 	std::vector<vec2> points;
 	std::vector<std::pair<int, int>> edges;
@@ -212,34 +232,12 @@ class GraphCreator {
 		int size = randBetween(2, 8);
 		vec2 min(-rectSize/2, -rectSize/2);
 		vec2 max(rectSize/2, rectSize/2);
-		float diameter = 2 * radius;
-		float minDistance = diameter + radiusEps;
 
 		for (int i = 0; i < size; i++) {
 			vec2 point;
-
-			bool good;
 			do {
-				good = true;
 				point = vec2(randFloatBetween(min.x, max.x), randFloatBetween(min.y, max.y));
-
-				for (int j = 0; j < i; j++) {
-					vec2 d = point - points[j];
-					if (length(d) < minDistance) {
-						good = false;
-						break;
-					}
-				}
-
-				points.push_back(point);
-				for (auto edge: edges) {
-					if (edgeCrossesCircleAny(edge.first, edge.second)) {
-						good = false;
-						break;
-					}
-				}
-				points.erase(points.begin() + points.size() - 1);
-			} while(!good);
+			} while(pointCrossesAny(point));
 			points.push_back(point);
 
 			// edge creation
@@ -486,8 +484,6 @@ void onMouse(int button, int state, int pX, int pY) {
 }
 
 MoleculeChange physics(Molecule &reference, Molecule &actor) {
-	MoleculeChange xd;
-	return xd;
 	float sumM = 0;
 	vec2 sumFc_move(0, 0);
 	float summ = 0;
