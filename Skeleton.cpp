@@ -477,7 +477,7 @@ void onMouse(int button, int state, int pX, int pY) {
 
 MoleculeChange physics(Molecule &reference, Molecule &actor) {
 	float sumM = 0;
-	vec2 sumF(0, 0);
+	vec2 sumF_move(0, 0);
 	float summ = 0;
 	for (Atom refAtom: reference.atoms) {
 		vec2 sumFc(0,0);
@@ -492,25 +492,28 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 
 		// Fd
 		vec3 vk = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
-		vec2 v = reference.v + vec2(vk.x, vk.y); // TODO
-		vec2 Fd = -dragConstant * v;
+		vec2 Fd_k = -dragConstant * vec2(vk.x, vk.y);
 
-		vec2 F = sumFc+Fd;
-		float M = cross(vec3(r.x, r.y, 0), vec3(F.x, F.y, 0)).z;
+		vec2 Fc_k = dot(sumFc, normalize(r)) * normalize(r);
+		vec2 Fc_move = sumFc - Fc_k;
+
+		vec2 F_k = Fc_k+Fd_k;
+		float M = cross(vec3(r.x, r.y, 0), vec3(F_k.x, F_k.y, 0)).z;
 		
 		sumM += M;
 		summ += refAtom.m;
-		sumF = sumF + F;
+		sumF_move = sumF_move + Fc_move;
 	}
-	//sumF = sumF - dragConstant * reference.v;
+	vec2 Fd_move = -dragConstant * reference.v;
+	sumF_move = sumF_move + Fd_move;
 
-	printf("v: %f\n", reference.v + sumF/summ * dt);
+	printf("v: %f\n", reference.v + sumF_move/summ * dt);
 	printf("p: %f\n", reference.v * dt / distanceUnit);
 	printf("beta: %f\n", sumM/reference.angularMass * dt);
 	printf("alpha: %f\n", reference.omega * dt);
 
 	MoleculeChange moleculeChange;
-	moleculeChange.v = sumF/summ * dt; //molecule M?
+	moleculeChange.v = sumF_move/summ * dt;
 	moleculeChange.position = reference.v * dt / distanceUnit;
 	moleculeChange.omega = sumM/reference.angularMass * dt;
 	moleculeChange.alpha = reference.omega * dt;
