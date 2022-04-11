@@ -230,11 +230,20 @@ class GraphCreator {
 						break;
 					}
 				}
+
+				points.push_back(point);
+				for (auto edge: edges) {
+					if (edgeCrossesCircleAny(edge.first, edge.second)) {
+						good = false;
+						break;
+					}
+				}
+				points.erase(points.begin() + points.size() - 1);
 			} while(!good);
 			points.push_back(point);
 
 			// edge creation
-			if(i == 0) { continue; }
+			if(i == 0) { continue; } // <= rand(0, -1)
 			int index;
 			do{
 				index = randBetween(0, i-1);
@@ -477,6 +486,8 @@ void onMouse(int button, int state, int pX, int pY) {
 }
 
 MoleculeChange physics(Molecule &reference, Molecule &actor) {
+	MoleculeChange xd;
+	return xd;
 	float sumM = 0;
 	vec2 sumFc_move(0, 0);
 	float summ = 0;
