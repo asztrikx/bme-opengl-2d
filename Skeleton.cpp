@@ -143,8 +143,8 @@ struct Atom {
 
 	mat4 M() { return ScaleMatrix(vec2(radius, radius)) * TranslateMatrix(position); }
 
-	void Draw(mat4 T) {
-		mat4 mvp = M() * T * camera.V() * camera.P();
+	void Draw() {
+		mat4 mvp = M() * camera.V() * camera.P();
 		circle.Draw(mvp, color);
 	}
 };
@@ -425,7 +425,7 @@ class Molecule {
 		}
 
 		for(Atom atom : atoms) {
-			atom.Draw(MAtom(alpha));
+			atom.Draw();
 		}
 	}
 };
