@@ -291,6 +291,9 @@ class Molecule {
 
 		for (Atom& atom: atoms) {
 			atom.position = atom.position + moleculeChange.position;
+			vec4 p(atom.position.x, atom.position.y, 0, 1);
+			p = p * MAtom(alpha);
+			atom.position = vec2(p.x, p.y);
 		}
 	}
 
@@ -407,6 +410,8 @@ class Molecule {
 
 	mat4 M() { return RotationMatrix(alpha, vec3(0,0,1)) * TranslateMatrix(position); }
 
+	mat4 MAtom(float a) { return TranslateMatrix(-getCentroid()) * RotationMatrix(a, vec3(0,0,1)) * TranslateMatrix(getCentroid()); }
+
 	void Draw() {
 		glBindVertexArray(vao);
 		glLineWidth(2.0f);
@@ -420,7 +425,7 @@ class Molecule {
 		}
 
 		for(Atom atom : atoms) {
-			atom.Draw(TranslateMatrix(-getCentroid()) * RotationMatrix(alpha, vec3(0,0,1)) * TranslateMatrix(getCentroid()));
+			atom.Draw(MAtom(alpha));
 		}
 	}
 };
@@ -494,21 +499,21 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 			// Fc
 			float k = 2*8.9875517923e9;
 			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit; // TODO really small distance
-			dbg printf("%le %le\n", refAtom.q, actorAtom.q);
+			//dbg printf("q1, q2: %le %le\n", refAtom.q, actorAtom.q);
 			vec2 Fc = k * (refAtom.q*actorAtom.q) / length(d) * normalize(d);
 			sumFc = sumFc + Fc;
 		}
-		dbg printf("sum force: %le %le %le\n", sumFc.x, sumFc.y, reference.omega);
+		//dbg printf("sum force: %le %le %le\n", sumFc.x, sumFc.y, reference.omega);
 
 		vec2 Fc_k = dot(sumFc, normalize(r)) * normalize(r);
 		vec2 Fc_move = sumFc - Fc_k;
 
-		dbg printf("Fck force: %le %le %le\n", Fc_k.x, Fc_k.y, reference.omega);
+		//dbg printf("Fck force: %le %le %le\n", Fc_k.x, Fc_k.y, reference.omega);
 		// Fd
 		vec3 v_k = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
 		vec2 Fd_k = -dragConstant * vec2(v_k.x, v_k.y);
 
-		dbg printf("Fdk force: %le %le %le\n", Fd_k.x, Fd_k.y, reference.omega);
+		//dbg printf("Fdk force: %le %le %le\n", Fd_k.x, Fd_k.y, reference.omega);
 
 		vec2 F_k = Fc_k + Fd_k;
 		float M = cross(vec3(r.x, r.y, 0), vec3(F_k.x, F_k.y, 0)).z;
@@ -547,6 +552,7 @@ void onIdle() {
 				if(i == j) {
 					continue;
 				}
+				dbg printf("------m%d\n", i);
 				moleculeChanges[i] = moleculeChanges[i] + physics(*molecules[i], *molecules[j]);
 			}
 		}
