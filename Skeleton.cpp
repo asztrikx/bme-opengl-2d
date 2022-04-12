@@ -232,8 +232,7 @@ class GraphCreator {
 			} while(pointCrossesAny(point));
 			points.push_back(point);
 
-			// edge creation
-			if(i == 0) { continue; } // <= rand(0, -1)
+			if(i == 0) { continue; }
 			int index;
 			do{
 				index = randBetween(0, i-1);
@@ -276,7 +275,7 @@ class Molecule {
 
 	void addChanges(MoleculeChange moleculeChange) {
 		alpha += moleculeChange.alpha;
-		omega += moleculeChange.omega; // TODO overflow
+		omega += moleculeChange.omega;
 		position = position + moleculeChange.position;
 		v = v + moleculeChange.v;
 
@@ -297,7 +296,6 @@ class Molecule {
 		}
 		edges = graphCreator.edges;
 
-		// tesselation
 		std::vector<vec2> edgePoints;
 		for (size_t i = 0; i < edges.size(); i++) {
 			vec2 a = atoms[edges[i].first].position;
@@ -310,7 +308,6 @@ class Molecule {
 			}
 		}
 
-		// rand m, q
 		int sumCharge = 0;
 		for (Atom& atom: atoms) {
 			atom.m = randBetween(1, massRange);
@@ -332,7 +329,6 @@ class Molecule {
 			}
 		}
 
-		// color, chargeUnit
 		for (Atom& atom: atoms) {
 			float intensity = 1.0f * fabs(atom.q / chargeAbsRange);
 			vec3 endColor;
@@ -345,7 +341,6 @@ class Molecule {
 			atom.q = atom.q * chargeUnit;
 		}
         
-        // balancepoint
 		vec2 centroid(0, 0);
 		float sumMass = 0;
 		for (Atom &atom : atoms) {
@@ -355,7 +350,6 @@ class Molecule {
 		}
 		centroid = centroid / sumMass;
 
-		// balancepoint -> origo
 		for (vec2 &edgePoint: edgePoints) {
 			edgePoint = edgePoint - centroid;
 		}
@@ -363,14 +357,12 @@ class Molecule {
 			atom.position = atom.position - centroid;
 		}
 
-		// angular mass
 		angularMass = 0;
 		for (Atom atom: atoms) {
 			angularMass = atom.m * dot(atom.position,atom.position) * distanceUnit * distanceUnit;
 			angularMass *= 10;
 		}
 
-		// random position
 		int x = randBetween(-rectSize/2, rectSize/2);
 		int y = randBetween(-rectSize/2, rectSize/2);
 		position = vec2(x,y);
@@ -486,14 +478,12 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 	for (Atom refAtom: reference.atoms) {
 		vec2 localSumFc(0,0);
 		for (Atom actorAtom: actor.atoms) {
-			// Fc
 			float k = 2*8.9875517923e9;
 			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit;
 			vec2 Fc = k * (refAtom.q*actorAtom.q) / length(d) * normalize(d);
 			localSumFc = localSumFc + Fc;
 		}
 
-		// Fd
 		vec2 r = (refAtom.position - reference.getCentroid())*distanceUnit;
 		vec3 v_k = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
 		vec2 v = reference.v + vec2(v_k.x, v_k.y);
@@ -535,7 +525,6 @@ void onIdle() {
 			}
 		}
 
-		// Apply changes
 		for (int i = 0; i < molecules.size(); i++) {
 			molecules[i]->addChanges(moleculeChanges[i]);
 		}
