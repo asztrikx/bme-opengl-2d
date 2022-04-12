@@ -482,17 +482,17 @@ void onMouse(int button, int state, int pX, int pY) {
 
 MoleculeChange physics(Molecule &reference, Molecule &actor) {
 	float sumM = 0;
-	vec2 sumF(0, 0);
+	vec2 sumFc(0, 0);
 	float summ = 0;
 	for (Atom refAtom: reference.atoms) {
-		vec2 sumFc(0,0);
+		vec2 localSumFc(0,0);
 		for (Atom actorAtom: actor.atoms) {
 			// Fc
 			float k = 2*8.9875517923e9;
 			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit;
 			//dbg printf("q1, q2: %le %le\n", refAtom.q, actorAtom.q);
 			vec2 Fc = k * (refAtom.q*actorAtom.q) / length(d) * normalize(d);
-			sumFc = sumFc + Fc;
+			localSumFc = localSumFc + Fc;
 		}
 		//dbg printf("sum force: %le %le %le\n", sumFc.x, sumFc.y, reference.omega);
 
@@ -504,15 +504,15 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 
 		//dbg printf("Fdk force: %le %le %le\n", Fd_k.x, Fd_k.y, reference.omega);
 
-		vec2 F_k = sumFc + Fd_k;
+		vec2 F_k = localSumFc + Fd_k;
 		float M = cross(vec3(r.x, r.y, 0), vec3(F_k.x, F_k.y, 0)).z;
 		
 		sumM += M;
 		summ += refAtom.m;
-		sumF = sumF + sumFc;
+		sumFc = sumFc + localSumFc;
 	}
 	vec2 Fd_move = -dragConstant * reference.v;
-	vec2 F_move = sumF + Fd_move;
+	vec2 F_move = sumFc + Fd_move;
 
 	MoleculeChange moleculeChange;
 	moleculeChange.v = F_move/summ * dt;
