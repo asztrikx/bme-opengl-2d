@@ -147,7 +147,6 @@ struct Atom {
 };
 
 class GraphCreator {
-	float radius, radiusEps;
 	float rectSize = 50.0f;
 
 	int direction(vec2 base, vec2 from, vec2 to) {
@@ -186,7 +185,7 @@ class GraphCreator {
 		vec2 n = vec2(-v.y, v.x);
 		vec2 n0 = normalize(n);
 		float distance = dot(p-a, n0);
-		return fabs(distance) <= radius + radiusEps;
+		return fabs(distance) <= atomRadius + atomRadiusEps;
 	}
 
 	bool edgeCrossesCircleAny(int aIndex, int bIndex) {
@@ -202,8 +201,8 @@ class GraphCreator {
 	}
 
 	bool pointCrossesAny(vec2 point) {
-		float diameter = 2 * radius;
-		float minDistance = diameter + radiusEps;
+		float diameter = 2 * atomRadius;
+		float minDistance = diameter + atomRadiusEps;
 
 		for (int j = 0; j < points.size(); j++) {
 			vec2 d = point - points[j];
@@ -225,7 +224,7 @@ class GraphCreator {
 	std::vector<vec2> points;
 	std::vector<std::pair<int, int>> edges;
 
-	GraphCreator(float radius, float radiusEps) : radius(radius), radiusEps(radiusEps) {
+	GraphCreator() {
 		int size = randBetween(2, 8);
 		vec2 min(-rectSize/2, -rectSize/2);
 		vec2 max(rectSize/2, rectSize/2);
@@ -295,7 +294,7 @@ class Molecule {
 	}
 
 	Molecule() {
-		GraphCreator graphCreator(atomRadius, atomRadiusEps);
+		GraphCreator graphCreator;
 		std::vector<vec2> points = graphCreator.points;
 		atoms.resize(points.size());
 		for (size_t i = 0; i < atoms.size(); i++) {
