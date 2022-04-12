@@ -292,7 +292,7 @@ class Molecule {
 		for (Atom& atom: atoms) {
 			atom.position = atom.position + moleculeChange.position;
 			vec4 p(atom.position.x, atom.position.y, 0, 1);
-			p = p * MAtom(alpha);
+			p = p * MAtom(moleculeChange.alpha);
 			atom.position = vec2(p.x, p.y);
 		}
 	}
@@ -490,40 +490,36 @@ void onMouse(int button, int state, int pX, int pY) {
 
 MoleculeChange physics(Molecule &reference, Molecule &actor) {
 	float sumM = 0;
-	vec2 sumFc_move(0, 0);
+	vec2 sumF(0, 0);
 	float summ = 0;
 	for (Atom refAtom: reference.atoms) {
 		vec2 sumFc(0,0);
-		vec2 r = (refAtom.position - reference.getCentroid())*distanceUnit;
 		for (Atom actorAtom: actor.atoms) {
 			// Fc
 			float k = 2*8.9875517923e9;
-			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit; // TODO really small distance
+			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit;
 			//dbg printf("q1, q2: %le %le\n", refAtom.q, actorAtom.q);
 			vec2 Fc = k * (refAtom.q*actorAtom.q) / length(d) * normalize(d);
 			sumFc = sumFc + Fc;
 		}
 		//dbg printf("sum force: %le %le %le\n", sumFc.x, sumFc.y, reference.omega);
 
-		vec2 Fc_k = dot(sumFc, normalize(r)) * normalize(r);
-		vec2 Fc_move = sumFc - Fc_k;
-
-		//dbg printf("Fck force: %le %le %le\n", Fc_k.x, Fc_k.y, reference.omega);
 		// Fd
+		vec2 r = (refAtom.position - reference.getCentroid())*distanceUnit;
 		vec3 v_k = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
 		vec2 Fd_k = -dragConstant * vec2(v_k.x, v_k.y);
 
 		//dbg printf("Fdk force: %le %le %le\n", Fd_k.x, Fd_k.y, reference.omega);
 
-		vec2 F_k = Fc_k + Fd_k;
+		vec2 F_k = sumFc + Fd_k;
 		float M = cross(vec3(r.x, r.y, 0), vec3(F_k.x, F_k.y, 0)).z;
 		
 		sumM += M;
 		summ += refAtom.m;
-		sumFc_move = sumFc_move + Fc_move;
+		sumF = sumF + sumFc;
 	}
 	vec2 Fd_move = -dragConstant * reference.v;
-	vec2 F_move = sumFc_move + Fd_move;
+	vec2 F_move = sumF + Fd_move;
 
 	MoleculeChange moleculeChange;
 	moleculeChange.v = F_move/summ * dt;
