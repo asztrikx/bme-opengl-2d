@@ -108,7 +108,7 @@ class Circle {
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
 		std::vector<vec2> points(tesselationCount);
-		for (size_t i = 0; i < tesselationCount; i++) {
+		for (int i = 0; i < tesselationCount; i++) {
 			float angle = 2*M_PI * i/(tesselationCount - 1);
 			points[i] = vec2(cosf(angle), sinf(angle));
 		}
@@ -291,13 +291,13 @@ class Molecule {
 		GraphCreator graphCreator;
 		std::vector<vec2> points = graphCreator.points;
 		atoms.resize(points.size());
-		for (size_t i = 0; i < atoms.size(); i++) {
+		for (int i = 0; i < atoms.size(); i++) {
 			atoms[i].position = points[i];
 		}
 		edges = graphCreator.edges;
 
 		std::vector<vec2> edgePoints;
-		for (size_t i = 0; i < edges.size(); i++) {
+		for (int i = 0; i < edges.size(); i++) {
 			vec2 a = atoms[edges[i].first].position;
 			vec2 b = atoms[edges[i].second].position;
 
