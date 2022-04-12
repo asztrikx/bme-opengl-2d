@@ -63,8 +63,8 @@ float massUnit = 1.6735575e-27;
 float chargeUnit = 1.60218e-19;
 float distanceUnit = 0.5*1e-2;
 
-int massMax = 20;
-int massMin = 10;
+int massMax = 30;
+int massMin = 20;
 int chargeAbsRange = 2;
 float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
