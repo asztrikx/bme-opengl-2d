@@ -82,7 +82,7 @@ float randFloatBetween(int min, int max) {
 
 class Camera2D {
 	vec2 position = vec2(0, 0);
-	vec2 size = vec2(45,45);
+	vec2 size = vec2(30,30);
 
   public:
 	mat4 V() { return TranslateMatrix(-position); }
@@ -133,13 +133,12 @@ Circle circle;
 
 struct Atom {
 	vec2 position;
-	float m, q, radius;
+	float m, q;
 	vec3 color;
 
-	// TODO take radius out
-	Atom(float radius) : radius(radius) { }
+	Atom() { }
 
-	mat4 M() { return ScaleMatrix(vec2(radius, radius)) * TranslateMatrix(position); }
+	mat4 M() { return ScaleMatrix(vec2(atomRadius, atomRadius)) * TranslateMatrix(position); }
 
 	void Draw() {
 		mat4 mvp = M() * camera.V() * camera.P();
@@ -298,7 +297,7 @@ class Molecule {
 	Molecule() {
 		GraphCreator graphCreator(atomRadius, atomRadiusEps);
 		std::vector<vec2> points = graphCreator.points;
-		atoms.resize(points.size(), Atom(atomRadius));
+		atoms.resize(points.size());
 		for (size_t i = 0; i < atoms.size(); i++) {
 			atoms[i].position = points[i];
 		}
