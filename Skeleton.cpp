@@ -361,7 +361,6 @@ class Molecule {
 		angularMass = 0;
 		for (Atom atom: atoms) {
 			angularMass = atom.m * dot(atom.position,atom.position) * distanceUnit * distanceUnit;
-			//angularMass *= 10;
 		}
 
 		float x = randFloatBetween(-rectSize/2, rectSize/2);
