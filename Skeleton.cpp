@@ -248,8 +248,6 @@ struct MoleculeChange {
 	vec2 v = vec2(0,0), position = vec2(0,0);
 	float omega=0, alpha=0;
 
-	MoleculeChange() {}
-
 	MoleculeChange operator+(MoleculeChange other) {
 		MoleculeChange moleculeChange;
 		moleculeChange.position = position + other.position;
@@ -262,7 +260,7 @@ struct MoleculeChange {
 
 class Molecule {
 	std::vector<std::pair<int,int>> edges;
-	int rectSize = 100.0f;
+	int rectSize = 75.0f;
 	unsigned int vao;
 	unsigned int vbo;
 	int edgeTesselation = 100;
