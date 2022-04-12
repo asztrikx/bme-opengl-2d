@@ -63,7 +63,8 @@ float massUnit = 1.6735575e-27;
 float chargeUnit = 1.60218e-19;
 float distanceUnit = 0.5*1e-2;
 
-int massRange = 2;
+int massMax = 20;
+int massMin = 10;
 int chargeAbsRange = 2;
 float atomRadius = 3;
 float atomRadiusEps = atomRadius * 1.5f;
@@ -310,7 +311,7 @@ class Molecule {
 
 		int sumCharge = 0;
 		for (Atom& atom: atoms) {
-			atom.m = randBetween(1, massRange);
+			atom.m = randBetween(massMin, massMax);
 			atom.q = randBetween(-chargeAbsRange, chargeAbsRange);
 			sumCharge += atom.q;
 		}
@@ -360,7 +361,7 @@ class Molecule {
 		angularMass = 0;
 		for (Atom atom: atoms) {
 			angularMass = atom.m * dot(atom.position,atom.position) * distanceUnit * distanceUnit;
-			angularMass *= 10;
+			//angularMass *= 10;
 		}
 
 		float x = randFloatBetween(-rectSize/2, rectSize/2);
