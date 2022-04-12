@@ -363,8 +363,8 @@ class Molecule {
 			angularMass *= 10;
 		}
 
-		int x = randBetween(-rectSize/2, rectSize/2);
-		int y = randBetween(-rectSize/2, rectSize/2);
+		float x = randFloatBetween(-rectSize/2, rectSize/2);
+		float y = randFloatBetween(-rectSize/2, rectSize/2);
 		position = vec2(x,y);
 		for (Atom& atom: atoms) {
 			atom.position = atom.position + position;
