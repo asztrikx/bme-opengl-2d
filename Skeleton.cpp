@@ -97,7 +97,6 @@ Camera2D camera;
 
 class Circle {
 	const int tesselationCount = 50;
-	const int count = tesselationCount + 1;
 	unsigned int vao;
 
   public:
@@ -109,11 +108,10 @@ class Circle {
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-		std::vector<vec2> points(count);
-		points[0] = vec2(0,0);
+		std::vector<vec2> points(tesselationCount);
 		for (size_t i = 0; i < tesselationCount; i++) {
 			float angle = 2*M_PI * i/(tesselationCount - 1);
-			points[i+1] = vec2(cosf(angle), sinf(angle));
+			points[i] = vec2(cosf(angle), sinf(angle));
 		}
 		glBufferData(GL_ARRAY_BUFFER, points.size()*sizeof(vec2), &points[0], GL_STATIC_DRAW);
 
@@ -127,7 +125,7 @@ class Circle {
 		gpuProgram.setUniform(MVP, "MVP");
 		gpuProgram.setUniform(color, "color");
 
-		glDrawArrays(GL_TRIANGLE_FAN, 0, count);
+		glDrawArrays(GL_TRIANGLE_FAN, 0, tesselationCount);
 	}
 };
 
