@@ -201,18 +201,15 @@ class GraphCreator {
 	}
 
 	bool pointCrossesAny(vec2 point) {
-		float diameter = 2 * atomRadius;
-		float minDistance = diameter + atomRadiusEps;
-
 		for (int j = 0; j < points.size(); j++) {
 			vec2 d = point - points[j];
-			if (length(d) < minDistance) {
+			if (length(d) < 2 * atomRadius + atomRadiusEps) {
 				return true;
 			}
 		}
 
 		for (auto edge: edges) {
-			if (edgeCrossesCircle(edge.first, edge.second, point)) {
+			if (edgeCrossesCircle(points[edge.first], points[edge.second], point)) {
 				return true;
 			}
 		}
@@ -277,6 +274,7 @@ class Molecule {
 	float omega = 0;
 	std::vector<Atom> atoms;
 	float angularMass = 0;
+	
 	vec2 getCentroid() { return position; }
 
 	void addChanges(MoleculeChange moleculeChange) {
