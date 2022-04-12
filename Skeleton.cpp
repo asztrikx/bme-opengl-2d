@@ -505,7 +505,8 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 		// Fd
 		vec2 r = (refAtom.position - reference.getCentroid())*distanceUnit;
 		vec3 v_k = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
-		vec2 Fd_k = -dragConstant * vec2(v_k.x, v_k.y);
+		vec2 v = reference.v + vec2(v_k.x, v_k.y);
+		vec2 Fd_k = -dragConstant * v;
 
 		//dbg printf("Fdk force: %le %le %le\n", Fd_k.x, Fd_k.y, reference.omega);
 
