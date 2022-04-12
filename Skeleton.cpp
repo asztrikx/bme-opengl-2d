@@ -59,7 +59,6 @@ const char * const fragmentSource = R"(
 	}
 )";
 
-#define dbg if(true)
 float massUnit = 1.6735575e-27;
 float chargeUnit = 1.60218e-19;
 float distanceUnit = 0.5*1e-2;
@@ -490,19 +489,15 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 			// Fc
 			float k = 2*8.9875517923e9;
 			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit;
-			//dbg printf("q1, q2: %le %le\n", refAtom.q, actorAtom.q);
 			vec2 Fc = k * (refAtom.q*actorAtom.q) / length(d) * normalize(d);
 			localSumFc = localSumFc + Fc;
 		}
-		//dbg printf("sum force: %le %le %le\n", sumFc.x, sumFc.y, reference.omega);
 
 		// Fd
 		vec2 r = (refAtom.position - reference.getCentroid())*distanceUnit;
 		vec3 v_k = cross(vec3(0,0,reference.omega), vec3(r.x, r.y, 0));
 		vec2 v = reference.v + vec2(v_k.x, v_k.y);
 		vec2 Fd_k = -dragConstant * v;
-
-		//dbg printf("Fdk force: %le %le %le\n", Fd_k.x, Fd_k.y, reference.omega);
 
 		vec2 F_k = localSumFc + Fd_k;
 		float M = cross(vec3(r.x, r.y, 0), vec3(F_k.x, F_k.y, 0)).z;
@@ -520,11 +515,6 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 	moleculeChange.omega = sumM/reference.angularMass * dt;
 	moleculeChange.alpha = reference.omega * dt;
 
-	dbg printf("v: %le %le\n", moleculeChange.v.x/distanceUnit, moleculeChange.v.y/distanceUnit);
-	dbg printf("p: %le %le\n", moleculeChange.position.x, moleculeChange.position.y);
-	dbg printf("beta: %le\n", moleculeChange.omega);
-	dbg printf("alpha: %le\n", moleculeChange.alpha);
-
 	return moleculeChange;
 }
 
@@ -541,7 +531,6 @@ void onIdle() {
 				if(i == j) {
 					continue;
 				}
-				dbg printf("------m%d\n", i);
 				moleculeChanges[i] = moleculeChanges[i] + physics(*molecules[i], *molecules[j]);
 			}
 		}
