@@ -15,6 +15,7 @@ g++ \
 -pedantic \
 -fsanitize=undefined \
 -fsanitize-undefined-trap-on-error \
+-fsanitize=address \
 -lm \
 -D MEMTRACE \
 -lGL \

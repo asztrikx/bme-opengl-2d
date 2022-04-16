@@ -41,9 +41,9 @@ const char * const vertexSource = R"(
 	layout(location = 0) in vec2 v;
 
 	void main() {
-		vec4 v2 = vec4(v.x, v.y, 0, 1) * MVP;
+		vec4 v2 = vec4(v.xy, 0, 1) * MVP;
 		float w = pow(v2.x*v2.x + v2.y*v2.y + 1, 0.5);
-		gl_Position = vec4(v2.x/(w + 1), v2.y/(w + 1), 0, 1);
+		gl_Position = vec4(v2.x, v2.y, 0, w+1);
 	}
 )";
 
@@ -116,7 +116,7 @@ class Circle {
 		glBufferData(GL_ARRAY_BUFFER, points.size()*sizeof(vec2), &points[0], GL_STATIC_DRAW);
 
 		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), nullptr);
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 	}
 
 	void Draw(mat4 MVP, vec3 color) {
@@ -136,8 +136,6 @@ struct Atom {
 	float m, q;
 	vec3 color;
 
-	Atom() { }
-
 	mat4 M() { return ScaleMatrix(vec2(atomRadius, atomRadius)) * TranslateMatrix(position); }
 
 	void Draw() {
@@ -152,7 +150,7 @@ class GraphCreator {
 	int direction(vec2 base, vec2 from, vec2 to) {
 		from = from - base;
 		to = to - base;
-		float area = from.y*to.x - from.x * to.y;
+		float area = from.y * to.x - from.x * to.y;
 		if (area < 0) { return -1; }
 		if (area > 0) { return 1; }
 		return 0;
@@ -201,8 +199,8 @@ class GraphCreator {
 	}
 
 	bool pointCrossesAny(vec2 point) {
-		for (int j = 0; j < points.size(); j++) {
-			vec2 d = point - points[j];
+		for (int i = 0; i < points.size(); i++) {
+			vec2 d = point - points[i];
 			if (length(d) < 2 * atomRadius + atomRadiusEps) {
 				return true;
 			}
@@ -317,13 +315,13 @@ class Molecule {
 		}
 
 		if (sumCharge != 0) {
-			int signal = sumCharge < 0 ? -1 : 1;
+			int sign = sumCharge < 0 ? -1 : 1;
 			sumCharge = abs(sumCharge);
 			for (int i = 1; i <= sumCharge; i++) {
 				do {
 					int index = randBetween(0, atoms.size()-1);
-					if (atoms[index].q != chargeAbsRange * -signal) {
-						atoms[index].q -= signal;
+					if (atoms[index].q != chargeAbsRange * -sign) {
+						atoms[index].q -= sign;
 						break;
 					}
 				} while (true);
@@ -440,7 +438,7 @@ void onInitialization() {
 
 void onDisplay() {
 	glClearColor(0.5, 0.5, 0.5, 1);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	for(Molecule *molecule: molecules){
 		molecule->Draw();
@@ -480,6 +478,9 @@ MoleculeChange physics(Molecule &reference, Molecule &actor) {
 		for (Atom actorAtom: actor.atoms) {
 			float k = 2*8.9875517923e9;
 			vec2 d = (refAtom.position - actorAtom.position) * distanceUnit;
+			/*if (length(d) < atomRadius * distanceUnit) {
+				d = atomRadius * distanceUnit * normalize(d);
+			}*/
 			vec2 Fc = k * (refAtom.q*actorAtom.q) / length(d) * normalize(d);
 			localSumFc = localSumFc + Fc;
 		}
